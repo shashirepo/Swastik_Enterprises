@@ -1,10 +1,12 @@
 """
-Sales Order Generator — SWASTIK ENTERPRISES 
+Sales Order Generator — SWASTIK ENTERPRISES
 Run with:  streamlit run sales_order_streamlit.py
-Requires:  pip install streamlit reportlab
+Requires:  pip install streamlit reportlab Pillow streamlit-authenticator
 """
 
 import io
+import os
+import hashlib
 import random
 import string
 import datetime
@@ -15,17 +17,16 @@ from reportlab.lib import colors
 from reportlab.lib.units import mm
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
-from reportlab.platypus import (Image,
-    SimpleDocTemplate, Table, TableStyle,
+from reportlab.platypus import (
+    Image, SimpleDocTemplate, Table, TableStyle,
     Paragraph, Spacer, HRFlowable,
 )
 
-# ── Constants ────────────────────────────────────────────────────────────────
+# ── Constants ─────────────────────────────────────────────────────────────────
 COMPANY_NAME  = "SWASTIK ENTERPRISES"
 COMPANY_ADDR1 = "BELWARIYA, POST - MURDAHA, DISTRICT - VARANASI, UTTAR PRADESH, INDIA, PIN-221202"
-#COMPANY_ADDR2 = "UTTAR PRADESH, INDIA"
 COMPANY_GSTIN = "GSTIN : 09QRFPS4600L1Z2"
-COMPANY_TEL   = "Tel. : +91 9936148679(Ravindra Singh) , +91 9506114040(Veer Singh)"
+COMPANY_TEL   = "Tel. : +91 9936148679 (Ravindra Singh) , +91 9506114040 (Veer Singh)"
 COMPANY_EMAIL = "Email : swastikenterprises8679@gmail.com"
 WARRANTY_BY   = "SWASTIK ENTERPRISES"
 BANK_DETAILS  = (
@@ -38,6 +39,7 @@ TERMS = [
 ]
 CGST_RATE = 9.0
 SGST_RATE = 9.0
+LOGO_PATH = "logo2.jpeg"   # place logo file next to this script
 
 COMMON_UNITS = ["Pcs.", "MTR", "KG", "Set", "Pair", "Box", "Roll", "Ltr", "Nos."]
 
@@ -47,24 +49,156 @@ SAMPLE_ITEMS = [
     ("SOLAR STRUCTURE C BASE PLATE",           "73089030", 1.0, "Pcs.",   80.00),
     ("SOLAR STRUCTURE MID CLAMP",              "73089030", 1.0, "Pcs.",   25.00),
     ("SOLAR STRUCTURE END CLAMP",              "73089030", 1.0, "Pcs.",   25.00),
-    ("SOLAR STRUCTURE C CHANNEL 80*40 - PCS", "73089030", 1.0, "Pcs.", 1452.50),
-    ("SOLAR APOLLO PLAIN STRUT*41*41 - PCS",  "73089030", 1.0, "Pcs.", 1120.50),
-    ("SOLAR STRUCTURE C BASE PLATE",           "73089030", 1.0, "Pcs.",   80.00),
-    ("SOLAR STRUCTURE MID CLAMP",              "73089030", 1.0, "Pcs.",   25.00),
-    ("SOLAR STRUCTURE END CLAMP",              "73089030", 1.0, "Pcs.",   25.00),
-    ("SOLAR STRUCTURE C CHANNEL 80*40 - PCS", "73089030", 1.0, "Pcs.", 1452.50),
-    ("SOLAR APOLLO PLAIN STRUT*41*41 - PCS",  "73089030", 1.0, "Pcs.", 1120.50),
-    ("SOLAR STRUCTURE C BASE PLATE",           "73089030", 1.0, "Pcs.",   80.00),
-    ("SOLAR STRUCTURE MID CLAMP",              "73089030", 1.0, "Pcs.",   25.00),
-    ("SOLAR STRUCTURE END CLAMP",              "73089030", 1.0, "Pcs.",   25.00),
-    ("SOLAR STRUCTURE C CHANNEL 80*40 - PCS", "73089030", 1.0, "Pcs.", 1452.50),
 ]
-#LOGO_PATH = r"C:\Users\user\Downloads\sales_order\logo2.jpeg"
-LOGO_PATH = "logo2.jpeg"
 
 
+# ════════════════════════════════════════════════════════════════════════════════
+#  AUTH HELPERS
+#  Credentials are read from st.secrets (Streamlit Community Cloud) OR from
+#  a local .streamlit/secrets.toml file during development.
+#
+#  secrets.toml format:
+#  ─────────────────────
+#  [auth.users.admin]
+#  password_hash = "sha256-hex-of-password"
+#  name          = "Administrator"
+#
+#  [auth.users.ravindra]
+#  password_hash = "sha256-hex-of-password"
+#  name          = "Ravindra Singh"
+# ════════════════════════════════════════════════════════════════════════════════
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+def _hash(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def _load_users() -> dict:
+    """
+    Returns {username: {name, password_hash}} from st.secrets if available,
+    otherwise falls back to built-in defaults (for first run / local dev).
+    """
+    try:
+        users_secret = st.secrets["auth"]["users"]
+        return {
+            uname: {
+                "name":          udata["name"],
+                "password_hash": udata["password_hash"],
+            }
+            for uname, udata in users_secret.items()
+        }
+    except (KeyError, AttributeError):
+        # ── Default credentials (change before deploying!) ──────────────────
+        # password: swastik@2024
+        # password: solar@2024
+        return {
+            "admin": {
+                "name":          "Administrator",
+                "password_hash": "cfad5ccaf32fb8765202858e5a6d7f6b2e88b9ca8f4d0cd433590163fd384f7e",
+            },
+            "ravindra": {
+                "name":          "Ravindra Singh",
+                "password_hash": "6396c7fb51044fedab8e8d0278c072269fa2a8c0f8f4704ef26d1c8a5e359ff3",
+            },
+        }
+
+
+def check_login(username: str, password: str) -> tuple[bool, str]:
+    """Returns (success, display_name)."""
+    users = _load_users()
+    user  = users.get(username.strip().lower())
+    if user and user["password_hash"] == _hash(password):
+        return True, user["name"]
+    return False, ""
+
+
+def show_login_page():
+    """Render a centered login card and handle submission."""
+    st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
+    html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
+    .stApp { background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%) !important; }
+
+    /* Hide Streamlit default chrome on login page */
+    #MainMenu, footer, header { visibility: hidden; }
+
+    .login-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 80vh;
+    }
+    .login-card {
+        background: white;
+        border-radius: 20px;
+        padding: 44px 40px 36px;
+        width: 100%;
+        max-width: 420px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.35);
+        text-align: center;
+        margin: auto;
+    }
+    .login-logo {
+        width: 64px; height: 64px;
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        border-radius: 16px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 28px; color: white; font-weight: 700;
+        margin: 0 auto 16px;
+    }
+    .login-title {
+        font-size: 22px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px;
+    }
+    .login-sub {
+        font-size: 13px; color: #7a7a9d; margin-bottom: 28px;
+    }
+    .login-error {
+        background: #fef2f2; border: 1px solid #fecaca;
+        color: #dc2626; border-radius: 8px;
+        padding: 10px 14px; font-size: 13px; margin-bottom: 12px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Centre the card using columns
+    _, mid, _ = st.columns([1, 1.6, 1])
+    with mid:
+        st.markdown("""
+        <div class="login-card">
+          <div class="login-logo">S</div>
+          <div class="login-title">SWASTIK ENTERPRISES</div>
+          <div class="login-sub">Sales Order Generator &nbsp;·&nbsp; Sign in to continue</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if st.session_state.get("login_error"):
+            st.error("❌ Invalid username or password. Please try again.")
+
+        with st.form("login_form", clear_on_submit=False):
+            username = st.text_input("Username", placeholder="Enter username")
+            password = st.text_input("Password", type="password", placeholder="Enter password")
+            submitted = st.form_submit_button("Sign In →", use_container_width=True)
+
+        if submitted:
+            ok, name = check_login(username, password)
+            if ok:
+                st.session_state.authenticated = True
+                st.session_state.user_name     = name
+                st.session_state.username      = username.strip().lower()
+                st.session_state.login_error   = False
+                st.rerun()
+            else:
+                st.session_state.login_error = True
+                st.rerun()
+
+        st.markdown(
+            "<p style='text-align:center;font-size:11px;color:#aaa;margin-top:20px'>"
+            "🔒 Secured · SWASTIK ENTERPRISES © 2024</p>",
+            unsafe_allow_html=True,
+        )
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
 def gen_order_no():
     return "SWSENT" + "".join(random.choices(string.digits, k=3))
 
@@ -98,7 +232,7 @@ def num_to_words(amount: float) -> str:
     return result + " Only"
 
 
-# ── PDF builder ──────────────────────────────────────────────────────────────
+# ── PDF builder ───────────────────────────────────────────────────────────────
 def build_pdf(party_name, party_city, order_no, order_date, items) -> bytes:
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -112,65 +246,51 @@ def build_pdf(party_name, party_city, order_no, order_date, items) -> bytes:
     def ps(name, **kw):
         return ParagraphStyle(name, parent=base["Normal"], **kw)
 
-    title_s  = ps("T",  fontSize=14, fontName="Helvetica-Bold", alignment=TA_CENTER, spaceAfter=6)
-    ctr_s    = ps("C",  fontSize=8,  alignment=TA_CENTER, leading=11)
-    lft_s    = ps("L",  fontSize=8,  alignment=TA_LEFT,   leading=11)
-    sml_s    = ps("S",  fontSize=7,  alignment=TA_LEFT,   leading=10)
-    bold_c   = ps("BC", fontSize=8,  fontName="Helvetica-Bold", alignment=TA_CENTER)
+    title_s = ps("T",  fontSize=14, fontName="Helvetica-Bold", alignment=TA_CENTER, spaceAfter=6)
+    ctr_s   = ps("C",  fontSize=8,  alignment=TA_CENTER, leading=11)
+    lft_s   = ps("L",  fontSize=8,  alignment=TA_LEFT,   leading=11)
+    sml_s   = ps("S",  fontSize=7,  alignment=TA_LEFT,   leading=10)
+    bold_c  = ps("BC", fontSize=8,  fontName="Helvetica-Bold", alignment=TA_CENTER)
 
     story = []
 
     # Logo
     try:
         logo = Image(LOGO_PATH, width=33*mm, height=30*mm)
-    except Exception as e:
-        print("Logo error:", e)
+    except Exception:
         logo = ""
 
-    # Header text (right side)
     header_text = [
         Paragraph("<u>ORDER ESTIMATION</u>", bold_c),
         Paragraph(COMPANY_NAME, title_s),
         Paragraph(COMPANY_ADDR1, ctr_s),
-        #Paragraph(COMPANY_ADDR2, ctr_s),
         Paragraph(COMPANY_GSTIN, ctr_s),
-        #Paragraph(f"{COMPANY_TEL}   {COMPANY_EMAIL}", ctr_s),
         Paragraph(f"{COMPANY_TEL}<br/>{COMPANY_EMAIL}", ctr_s),
     ]
 
-    # Create table
-    header_table = Table(
-        [
-            [logo, header_text]
-        ],
-        colWidths=[W * .20, W * .80]   # 👈 adjust if needed
-    )
-
-    # Styling
+    header_table = Table([[logo, header_text]], colWidths=[W * .20, W * .80])
     header_table.setStyle(TableStyle([
-        ("BOX",        (0, 0), (-1, -1), .9, colors.black),
-       # ("LINEBEFORE", (1, 0), (1, 0),   .5, colors.black),
-        ("VALIGN",     (0, 0), (-1, -1), "TOP"),
+        ("BOX",           (0, 0), (-1, -1), .9, colors.black),
+        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING",   (0, 0), (-1, -1), 4),
         ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
         ("TOPPADDING",    (0, 0), (-1, -1), 3),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
     ]))
-
     story.append(header_table)
     story.append(Spacer(1, 5))
+
     # Party / Order box
-    party_p = (f"<b>Party Details :</b><br/>{party_name}<br/>{party_city}")
-    order_p = (f"<b>Order No. :</b> {order_no}<br/>"
-               f"<b>Dated :</b> {order_date}<br/>")
+    party_p = f"<b>Party Details :</b><br/>{party_name}<br/>{party_city}"
+    order_p = f"<b>Order No. :</b> {order_no}<br/><b>Dated :</b> {order_date}<br/>"
     pt = Table(
         [[Paragraph(party_p, lft_s), Paragraph(order_p, lft_s)]],
         colWidths=[W * .55, W * .45],
     )
     pt.setStyle(TableStyle([
-        ("BOX", (0, 0), (-1, -1), .5, colors.black),
-        ("LINEBEFORE", (1, 0), (1, 0), .5, colors.black),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("BOX",           (0, 0), (-1, -1), .5, colors.black),
+        ("LINEBEFORE",    (1, 0), (1,  0),  .5, colors.black),
+        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING",   (0, 0), (-1, -1), 4),
         ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
         ("TOPPADDING",    (0, 0), (-1, -1), 3),
@@ -190,15 +310,13 @@ def build_pdf(party_name, party_city, order_no, order_date, items) -> bytes:
         amt = round(it["qty"] * it["price"], 2)
         subtotal  += amt
         total_qty += it["qty"]
-        rows.append([
-            str(i), it["desc"], it["hsn"],
-            f"{it['qty']:.2f}", it["unit"],
-            f"{it['price']:,.2f}", f"{amt:,.2f}",
-        ])
+        rows.append([str(i), it["desc"], it["hsn"],
+                     f"{it['qty']:.2f}", it["unit"],
+                     f"{it['price']:,.2f}", f"{amt:,.2f}"])
 
-    cgst = round(subtotal * CGST_RATE / 100, 2)
-    sgst = round(subtotal * SGST_RATE / 100, 2)
-    tax  = round(cgst + sgst, 2)
+    cgst  = round(subtotal * CGST_RATE / 100, 2)
+    sgst  = round(subtotal * SGST_RATE / 100, 2)
+    tax   = round(cgst + sgst, 2)
     grand = round(subtotal + tax, 2)
 
     rows += [
@@ -211,27 +329,26 @@ def build_pdf(party_name, party_city, order_no, order_date, items) -> bytes:
 
     it_t = Table(rows, colWidths=cw, repeatRows=1)
     it_t.setStyle(TableStyle([
-        ("BOX",       (0, 0),    (-1, -1),   .5, colors.black),
-        ("INNERGRID", (0, 0),    (-1, n-5), .3, colors.black),
-        ("LINEABOVE", (0, n-4),  (-1, n-4),  .5, colors.black),
-        ("LINEABOVE", (0, n-1),  (-1, n-1),  .5, colors.black),
-        ("BACKGROUND",(0, 0),    (-1, 0),   colors.Color(.92, .92, .92)),
-        ("FONTNAME",  (0, 0),    (-1, 0),   "Helvetica-Bold"),
-        ("FONTNAME",  (0, n-1),  (-1, n-1), "Helvetica-Bold"),
-        ("FONTSIZE",  (0, 0),    (-1, -1),  7.5),
-        ("ALIGN",     (0, 0),    (-1, -1),  "CENTER"),
-        ("ALIGN",     (1, 1),    (1, n-2),  "LEFT"),
-        ("ALIGN",     (5, 1),    (-1, -1),  "RIGHT"),
-        ("VALIGN",    (0, 0),    (-1, -1),  "MIDDLE"),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 2),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 2),
-        ("TOPPADDING",    (0, 0), (-1, -1), 2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-        ("SPAN", (1, n-1), (3, n-1)),
+        ("BOX",           (0, 0),   (-1, -1),  .5, colors.black),
+        ("INNERGRID",     (0, 0),   (-1, n-5), .3, colors.black),
+        ("LINEABOVE",     (0, n-4), (-1, n-4), .5, colors.black),
+        ("LINEABOVE",     (0, n-1), (-1, n-1), .5, colors.black),
+        ("BACKGROUND",    (0, 0),   (-1, 0),   colors.Color(.92, .92, .92)),
+        ("FONTNAME",      (0, 0),   (-1, 0),   "Helvetica-Bold"),
+        ("FONTNAME",      (0, n-1), (-1, n-1), "Helvetica-Bold"),
+        ("FONTSIZE",      (0, 0),   (-1, -1),  7.5),
+        ("ALIGN",         (0, 0),   (-1, -1),  "CENTER"),
+        ("ALIGN",         (1, 1),   (1,  n-2), "LEFT"),
+        ("ALIGN",         (5, 1),   (-1, -1),  "RIGHT"),
+        ("VALIGN",        (0, 0),   (-1, -1),  "MIDDLE"),
+        ("LEFTPADDING",   (0, 0),   (-1, -1),  2),
+        ("RIGHTPADDING",  (0, 0),   (-1, -1),  2),
+        ("TOPPADDING",    (0, 0),   (-1, -1),  2),
+        ("BOTTOMPADDING", (0, 0),   (-1, -1),  2),
+        ("SPAN",          (1, n-1), (3,  n-1)),
     ]))
     story += [it_t, Spacer(1, 2*mm)]
 
-    # Tax summary
     tax_rows = [
         ["Tax Rate", "Taxable Amt.", "CGST Amt.", "SGST Amt.", "Total Tax"],
         ["18%", f"{subtotal:,.2f}", f"{cgst:,.2f}", f"{sgst:,.2f}", f"{tax:,.2f}"],
@@ -254,7 +371,6 @@ def build_pdf(party_name, party_city, order_no, order_date, items) -> bytes:
               HRFlowable(width=W, thickness=.5, color=colors.black),
               Spacer(1, 1*mm)]
 
-    # Footer
     terms_p = "<b>Terms &amp; Conditions</b><br/>E.&amp; O.E.<br/>"
     for j, t in enumerate(TERMS, 1):
         terms_p += f"{j}. {t}<br/>"
@@ -265,182 +381,159 @@ def build_pdf(party_name, party_city, order_no, order_date, items) -> bytes:
         colWidths=[W * .55, W * .45],
     )
     bt.setStyle(TableStyle([
-        ("BOX",        (0, 0), (-1, -1), .5, colors.black),
-        ("LINEBEFORE", (1, 0), (1, 0),   .5, colors.black),
-        ("VALIGN",     (0, 0), (-1, -1), "TOP"),
+        ("BOX",           (0, 0), (-1, -1), .5, colors.black),
+        ("LINEBEFORE",    (1, 0), (1,  0),  .5, colors.black),
+        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING",   (0, 0), (-1, -1), 4),
         ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
         ("TOPPADDING",    (0, 0), (-1, -1), 3),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
     ]))
     story.append(bt)
-
     doc.build(story)
     return buf.getvalue()
 
 
-# ── Streamlit UI ─────────────────────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════════════════
+#  STREAMLIT APP
+# ════════════════════════════════════════════════════════════════════════════════
 st.set_page_config(
-    page_title="Sales Order Generator",
+    page_title="Sales Order Generator — SWASTIK",
     page_icon="🧾",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# ── Custom CSS ────────────────────────────────────────────────────────────────
+# ── Guard: show login if not authenticated ────────────────────────────────────
+if not st.session_state.get("authenticated", False):
+    show_login_page()
+    st.stop()          # ← everything below is invisible until logged in
+
+
+# ── Main app CSS (only loaded after login) ────────────────────────────────────
 st.markdown("""
 <style>
-/* Google font */
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
-
 html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
-
-/* App background */
 .stApp { background: #f0f2fa; }
-
-/* Main container card */
 section.main > div { padding-top: 0 !important; }
 
-/* Top header banner */
 .top-banner {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    color: white;
-    padding: 22px 32px;
-    border-radius: 14px;
-    margin-bottom: 24px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
+    color: white; padding: 18px 28px; border-radius: 14px;
+    margin-bottom: 20px; display: flex; align-items: center; gap: 16px;
 }
 .banner-logo {
-    width: 48px; height: 48px;
-    background: #2563eb;
-    border-radius: 10px;
+    width: 44px; height: 44px; background: #2563eb; border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 22px; font-weight: 700; color: white;
-    flex-shrink: 0;
+    font-size: 20px; font-weight: 700; color: white; flex-shrink: 0;
 }
-.banner-title { font-size: 20px; font-weight: 600; }
-.banner-sub   { font-size: 13px; color: rgba(255,255,255,.55); margin-top: 2px; }
+.banner-title { font-size: 18px; font-weight: 600; }
+.banner-sub   { font-size: 12px; color: rgba(255,255,255,.5); margin-top: 2px; }
+.banner-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.banner-user  {
+    background: rgba(255,255,255,.1); color: #cbd5e1;
+    padding: 5px 14px; border-radius: 99px; font-size: 12px; font-weight: 500;
+}
 .banner-badge {
-    margin-left: auto;
-    background: rgba(5,150,105,.25);
-    color: #6ee7b7;
-    padding: 5px 14px;
-    border-radius: 99px;
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: .4px;
+    background: rgba(5,150,105,.25); color: #6ee7b7;
+    padding: 5px 14px; border-radius: 99px; font-size: 12px; font-weight: 500;
 }
 
-/* Section cards */
 .section-card {
-    background: white;
-    border-radius: 12px;
-    padding: 20px 24px;
-    margin-bottom: 16px;
-    border: 1px solid #e2e4f0;
+    background: white; border-radius: 12px; padding: 20px 24px;
+    margin-bottom: 16px; border: 1px solid #e2e4f0;
 }
 .section-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #7a7a9d;
-    letter-spacing: .8px;
-    text-transform: uppercase;
-    margin-bottom: 14px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #f0f2fa;
+    font-size: 13px; font-weight: 600; color: #7a7a9d;
+    letter-spacing: .8px; text-transform: uppercase;
+    margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f0f2fa;
 }
 
-/* Metric cards */
 .metric-row { display: flex; gap: 12px; margin-bottom: 16px; }
 .metric-card {
-    flex: 1;
-    background: #f4f5fa;
-    border-radius: 10px;
-    padding: 14px 16px;
-    border: 1px solid #e2e4f0;
+    flex: 1; background: #f4f5fa; border-radius: 10px;
+    padding: 14px 16px; border: 1px solid #e2e4f0;
 }
-.metric-label { font-size: 11px; color: #7a7a9d; font-weight: 500; letter-spacing: .5px; text-transform: uppercase; }
+.metric-label { font-size: 11px; color: #7a7a9d; font-weight: 500;
+                letter-spacing: .5px; text-transform: uppercase; }
 .metric-value { font-size: 20px; font-weight: 600; color: #1a1a2e; margin-top: 4px; }
 .metric-card.accent { background: #eff6ff; border-color: #bfdbfe; }
 .metric-card.accent .metric-value { color: #1d4ed8; }
 
-/* Items table header */
 .items-header {
     display: grid;
-    grid-template-columns: 2fr .7fr .6fr .7fr .8fr .7fr;
-    gap: 8px;
-    background: #1a1a2e;
-    border-radius: 8px;
-    padding: 10px 12px;
-    margin-bottom: 6px;
+    grid-template-columns: 2.5fr 1.3fr 0.6fr 0.9fr 0.85fr 0.75fr 0.35fr;
+    font-weight: bold; border-bottom: 1px solid #ccc; padding: 6px 0;
 }
-.items-header span {
-    font-size: 11px;
-    font-weight: 600;
-    color: rgba(255,255,255,.7);
-    letter-spacing: .5px;
-    text-transform: uppercase;
-}
+.items-header span { padding: 4px; }
 
-/* Streamlit tweaks */
-div[data-testid="stNumberInput"] input,
-div[data-testid="stTextInput"] input,
-div[data-testid="stSelectbox"] > div { border-radius: 8px !important; }
-
-div[data-testid="stButton"] > button {
-    border-radius: 8px;
-    font-weight: 500;
-    font-family: 'DM Sans', sans-serif;
-}
-
-/* Download button */
+div[data-testid="stButton"] > button { border-radius: 8px; font-weight: 500; }
 div[data-testid="stDownloadButton"] > button {
-    background: #2563eb !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 10px !important;
-    font-size: 15px !important;
-    font-weight: 600 !important;
-    padding: 12px 24px !important;
-    width: 100%;
-    transition: background .2s;
+    background: #2563eb !important; color: white !important;
+    border: none !important; border-radius: 10px !important;
+    font-size: 15px !important; font-weight: 600 !important;
+    padding: 12px 24px !important; width: 100%;
 }
-div[data-testid="stDownloadButton"] > button:hover {
-    background: #1d4ed8 !important;
-}
-
-/* Info / success boxes */
-div[data-testid="stInfo"]    { border-radius: 10px; }
-div[data-testid="stSuccess"] { border-radius: 10px; }
-div[data-testid="stWarning"] { border-radius: 10px; }
-div[data-testid="stError"]   { border-radius: 10px; }
-
-/* Expander */
-div[data-testid="stExpander"] {
-    border: 1px solid #e2e4f0 !important;
-    border-radius: 10px !important;
-}
-
-/* Sidebar */
-section[data-testid="stSidebar"] {
-    background: #1a1a2e !important;
-}
+div[data-testid="stDownloadButton"] > button:hover { background: #1d4ed8 !important; }
+div[data-testid="stInfo"],div[data-testid="stSuccess"],
+div[data-testid="stWarning"],div[data-testid="stError"] { border-radius: 10px; }
+div[data-testid="stExpander"] { border: 1px solid #e2e4f0 !important; border-radius: 10px !important; }
+section[data-testid="stSidebar"] { background: #1a1a2e !important; }
 section[data-testid="stSidebar"] * { color: rgba(255,255,255,.85) !important; }
-
 hr { border-color: #e2e4f0; margin: 20px 0; }
 </style>
+""", unsafe_allow_html=True)
 
+# ── Top banner (with logged-in user) ─────────────────────────────────────────
+user_display = st.session_state.get("user_name", "User")
+st.markdown(f"""
 <div class="top-banner">
-  <div class="banner-logo">T</div>
+  <div class="banner-logo">S</div>
   <div>
     <div class="banner-title">SWASTIK ENTERPRISES</div>
-    <div class="banner-sub">BELWARIYA, POST - MURDAHA, DISTRICT - VARANASI · GSTIN: 09QRFPS4600L1Z2</div>
+    <div class="banner-sub">BELWARIYA, POST - MURDAHA, DISTRICT - VARANASI &nbsp;·&nbsp; GSTIN: 09QRFPS4600L1Z2</div>
   </div>
-  <div class="banner-badge">● Live Preview</div>
+  <div class="banner-right">
+    <span class="banner-user">👤 {user_display}</span>
+    <span class="banner-badge">● Live Preview</span>
+  </div>
 </div>
 """, unsafe_allow_html=True)
+
+# Logout button (top-right via sidebar trick)
+with st.sidebar:
+    st.markdown(f"### 👤 {user_display}")
+    st.markdown("---")
+    st.markdown(f"""
+**{COMPANY_NAME}**
+
+{COMPANY_ADDR1}
+
+---
+**{COMPANY_GSTIN}**
+
+---
+📞 +91 9936148679 (Ravindra Singh)  
+📞 +91 9506114040 (Veer Singh)  
+✉ swastikenterprises8679@gmail.com
+
+---
+**Bank Details**  
+{BANK_DETAILS}
+
+---
+**Tax Rates**  
+CGST: {CGST_RATE}%  
+SGST: {SGST_RATE}%  
+Total GST: {CGST_RATE + SGST_RATE}%
+    """)
+    st.markdown("---")
+    if st.button("🚪 Logout", use_container_width=True):
+        for key in ["authenticated", "user_name", "username",
+                    "login_error", "order_no", "order_items"]:
+            st.session_state.pop(key, None)
+        st.rerun()
 
 # ── Session-state init ────────────────────────────────────────────────────────
 if "order_no" not in st.session_state:
@@ -459,78 +552,66 @@ left, right = st.columns([1.4, 1], gap="large")
 # ════════════════════════════════════════════════════════
 with left:
 
-    # ── Party details ──────────────────────────────────
     st.markdown('<div class="section-card"><div class="section-title">🏢 Party Details</div>', unsafe_allow_html=True)
-    party_name  = st.text_input("Party Name *",  placeholder="e.g. SWASTIK ENTERPRISES")
-    party_city  = st.text_input("City *",         placeholder="e.g. VARANASI")
-    #party_gstin = st.text_input("GSTIN / UIN",    placeholder="Optional")
+    party_name = st.text_input("Party Name *", placeholder="e.g. SHASHI ENTERPRISES")
+    party_city = st.text_input("City *",        placeholder="e.g. VARANASI")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # ── Order details ──────────────────────────────────
     st.markdown('<div class="section-card"><div class="section-title">📋 Order Details</div>', unsafe_allow_html=True)
     col_no, col_btn = st.columns([3, 1])
     with col_no:
         order_no = st.text_input("Order Number *", value=st.session_state.order_no)
     with col_btn:
-        st.write("")
-        st.write("")
+        st.write(""); st.write("")
         if st.button("↻ New", use_container_width=True):
             st.session_state.order_no = gen_order_no()
             st.rerun()
-
-    order_date = st.date_input("Order Date *", value=datetime.date.today())
+    order_date     = st.date_input("Order Date *", value=datetime.date.today())
     order_date_str = order_date.strftime("%d-%m-%Y")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # ── Items ──────────────────────────────────────────
     st.markdown('<div class="section-card"><div class="section-title">📦 Line Items</div>', unsafe_allow_html=True)
-
     st.markdown("""
 <style>
 .items-header {
     display: grid;
     grid-template-columns: 2.5fr 1.3fr 0.6fr 0.9fr 0.85fr 0.75fr 0.35fr;
-    font-weight: bold;
-    border-bottom: 1px solid #ccc;
-    padding: 6px 0;
+    font-weight: bold; border-bottom: 1px solid #ccc; padding: 6px 0;
 }
-
-.items-header span {
-    padding: 4px;
-}
+.items-header span { padding: 4px; }
 </style>
-
 <div class="items-header">
-  <span>Description</span>
-  <span>HSN/SAC</span>
-  <span>Qty</span>
-  <span>Unit</span>
-  <span>Price (₹)</span>
-  <span>Amount</span>
-  <span></span>
+  <span>Description</span><span>HSN/SAC</span><span>Qty</span>
+  <span>Unit</span><span>Price (₹)</span><span>Amount</span><span></span>
 </div>
 """, unsafe_allow_html=True)
 
-    items = st.session_state.order_items
+    row_list  = st.session_state.order_items
     to_delete = []
 
-    for i, item in enumerate(items):
+    for i, item in enumerate(row_list):
         c1, c2, c3, c4, c5, c6, c7 = st.columns([2.2, 1.3, .6, .9, .85, .75, .35])
         with c1:
-            item["desc"]  = st.text_input("Desc", value=item["desc"],  key=f"d{i}", label_visibility="collapsed", placeholder="Description")
+            item["desc"]  = st.text_input("Desc",  value=item["desc"],  key=f"d{i}",
+                                          label_visibility="collapsed", placeholder="Description")
         with c2:
-            item["hsn"]   = st.text_input("HSN",  value=item["hsn"],   key=f"h{i}", label_visibility="collapsed", placeholder="HSN")
+            item["hsn"]   = st.text_input("HSN",   value=item["hsn"],   key=f"h{i}",
+                                          label_visibility="collapsed", placeholder="HSN")
         with c3:
-            item["qty"]   = st.number_input("Qty", value=float(item["qty"]),   min_value=0.0, step=1.0, key=f"q{i}", label_visibility="collapsed", format="%.2f")
+            item["qty"]   = st.number_input("Qty",   value=float(item["qty"]),  min_value=0.0,
+                                            step=1.0, key=f"q{i}", label_visibility="collapsed", format="%.2f")
         with c4:
             item["unit"]  = st.selectbox("Unit", COMMON_UNITS,
-                index=COMMON_UNITS.index(item["unit"]) if item["unit"] in COMMON_UNITS else 0,
-                key=f"u{i}", label_visibility="collapsed")
+                                         index=COMMON_UNITS.index(item["unit"]) if item["unit"] in COMMON_UNITS else 0,
+                                         key=f"u{i}", label_visibility="collapsed")
         with c5:
-            item["price"] = st.number_input("Price", value=float(item["price"]), min_value=0.0, step=10.0, key=f"p{i}", label_visibility="collapsed", format="%.2f")
+            item["price"] = st.number_input("Price", value=float(item["price"]), min_value=0.0,
+                                            step=10.0, key=f"p{i}", label_visibility="collapsed", format="%.2f")
         with c6:
             amt = item["qty"] * item["price"]
-            st.markdown(f"<div style='padding:8px 4px;font-weight:600;font-size:13px;color:#1a1a2e;text-align:right'>₹{amt:,.2f}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='padding:8px 4px;font-weight:600;font-size:13px;"
+                        f"color:#1a1a2e;text-align:right'>₹{amt:,.2f}</div>",
+                        unsafe_allow_html=True)
         with c7:
             if st.button("✕", key=f"del{i}", help="Remove row"):
                 to_delete.append(i)
@@ -542,7 +623,7 @@ with left:
     col_add, col_load = st.columns(2)
     with col_add:
         if st.button("＋ Add Row", use_container_width=True):
-            st.session_state.order_items.append({"desc":"","hsn":"","qty":1.0,"unit":"Pcs.","price":0.0})
+            st.session_state.order_items.append({"desc": "", "hsn": "", "qty": 1.0, "unit": "Pcs.", "price": 0.0})
             st.rerun()
     with col_load:
         if st.button("Load Sample Data", use_container_width=True):
@@ -551,15 +632,14 @@ with left:
                 for d, h, q, u, p in SAMPLE_ITEMS
             ]
             st.rerun()
-
     st.markdown('</div>', unsafe_allow_html=True)
+
 
 # ════════════════════════════════════════════════════════
 #  RIGHT — Live summary + PDF
 # ════════════════════════════════════════════════════════
 with right:
 
-    # ── Compute totals ─────────────────────────────────
     valid_items = [it for it in st.session_state.order_items if it["desc"].strip()]
     subtotal    = sum(it["qty"] * it["price"] for it in valid_items)
     cgst_amt    = round(subtotal * CGST_RATE / 100, 2)
@@ -567,7 +647,6 @@ with right:
     total_tax   = round(cgst_amt + sgst_amt, 2)
     grand_total = round(subtotal + total_tax, 2)
 
-    # ── Metric cards ───────────────────────────────────
     st.markdown(f"""
     <div class="metric-row">
       <div class="metric-card">
@@ -594,43 +673,26 @@ with right:
     st.markdown(f"*{num_to_words(grand_total)}*")
     st.markdown("<hr/>", unsafe_allow_html=True)
 
-    # ── Order summary preview ──────────────────────────
     st.markdown('<div class="section-card"><div class="section-title">📄 Order Preview</div>', unsafe_allow_html=True)
-
     if order_no and party_name and party_city:
         st.markdown(f"""
         <table style="width:100%;font-size:13px;border-collapse:collapse">
-          <tr>
-            <td style="color:#7a7a9d;padding:5px 0;width:45%">Order Number</td>
-            <td style="font-weight:600;color:#1a1a2e">{order_no}</td>
-          </tr>
-          <tr>
-            <td style="color:#7a7a9d;padding:5px 0">Date</td>
-            <td style="font-weight:600;color:#1a1a2e">{order_date_str}</td>
-          </tr>
-          <tr>
-            <td style="color:#7a7a9d;padding:5px 0">Party</td>
-            <td style="font-weight:600;color:#1a1a2e">{party_name}, {party_city}</td>
-          </tr>
-          <tr>
-            <td style="color:#7a7a9d;padding:5px 0">GSTIN</td>
-          </tr>
-          <tr>
-            <td style="color:#7a7a9d;padding:5px 0">Line Items</td>
-            <td style="font-weight:600;color:#1a1a2e">{len(valid_items)} item(s)</td>
-          </tr>
-          <tr>
-            <td style="color:#7a7a9d;padding:5px 0">Warranty By</td>
-            <td style="font-weight:600;color:#1a1a2e">{WARRANTY_BY}</td>
-          </tr>
+          <tr><td style="color:#7a7a9d;padding:5px 0;width:45%">Order Number</td>
+              <td style="font-weight:600;color:#1a1a2e">{order_no}</td></tr>
+          <tr><td style="color:#7a7a9d;padding:5px 0">Date</td>
+              <td style="font-weight:600;color:#1a1a2e">{order_date_str}</td></tr>
+          <tr><td style="color:#7a7a9d;padding:5px 0">Party</td>
+              <td style="font-weight:600;color:#1a1a2e">{party_name}, {party_city}</td></tr>
+          <tr><td style="color:#7a7a9d;padding:5px 0">Line Items</td>
+              <td style="font-weight:600;color:#1a1a2e">{len(valid_items)} item(s)</td></tr>
+          <tr><td style="color:#7a7a9d;padding:5px 0">Warranty By</td>
+              <td style="font-weight:600;color:#1a1a2e">{WARRANTY_BY}</td></tr>
         </table>
         """, unsafe_allow_html=True)
     else:
         st.info("Fill in party name, city, and order number to see preview.")
-
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # ── Items breakdown ────────────────────────────────
     if valid_items:
         with st.expander(f"📦 {len(valid_items)} Line Item(s) — Click to expand", expanded=False):
             for i, it in enumerate(valid_items, 1):
@@ -643,7 +705,6 @@ with right:
                 if i < len(valid_items):
                     st.markdown("<hr style='margin:6px 0;border-color:#f0f2fa'>", unsafe_allow_html=True)
 
-    # ── Validation & PDF ───────────────────────────────
     st.markdown("<hr/>", unsafe_allow_html=True)
     errors = []
     if not party_name.strip(): errors.append("Party Name is required.")
@@ -667,30 +728,4 @@ with right:
             mime="application/pdf",
             use_container_width=True,
         )
-        st.caption(f"PDF will be saved as  `SalesOrder_{order_no}.pdf`")
-
-# ── Sidebar — Company info ────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("## Company Info")
-    st.markdown(f"""
-**{COMPANY_NAME}**
-
-{COMPANY_ADDR1} 
-
----  
-**{COMPANY_GSTIN}**
-
----
-📞 +91 9936148679(Ravindra Singh) , +91 9506114040(Veer Singh)  
-✉ swastikenterprises8679@gmail.com
-
----
-**Bank Details**  
-{BANK_DETAILS}
-
----
-**Tax Rates**  
-CGST: {CGST_RATE}%  
-SGST: {SGST_RATE}%  
-Total GST: {CGST_RATE + SGST_RATE}%
-    """)
+        st.caption(f"PDF will be saved as `SalesOrder_{order_no}.pdf`")
