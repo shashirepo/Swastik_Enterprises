@@ -59,7 +59,8 @@ SAMPLE_ITEMS = [
     ("SOLAR STRUCTURE END CLAMP",              "73089030", 1.0, "Pcs.",   25.00),
     ("SOLAR STRUCTURE C CHANNEL 80*40 - PCS", "73089030", 1.0, "Pcs.", 1452.50),
 ]
-LOGO_PATH = r"C:\Users\user\Downloads\sales_order\logo2.jpeg"
+#LOGO_PATH = r"C:\Users\user\Downloads\sales_order\logo2.jpeg"
+LOGO_PATH = "logo2.jpeg"
 
 
 
