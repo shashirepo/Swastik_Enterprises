@@ -45,6 +45,8 @@ TERMS = [
 CGST_RATE = 9.0
 SGST_RATE = 9.0
 LOGO_PATH = "logo2.jpeg"   # place logo file next to this script
+QR_PATH   = "qr_code.jpeg"  # place QR code image next to this script
+SIG_PATH  = "sign.jpg"       # place signature image next to this script
 
 COMMON_UNITS = ["Pcs.", "MTR", "KG", "Set", "Pair", "Box", "Roll", "Ltr", "Nos."]
 
@@ -504,8 +506,19 @@ if "order_no"    not in st.session_state: st.session_state.order_no = gen_order_
 if "order_items" not in st.session_state:
     st.session_state.order_items = [
         {"desc":d,"hsn":h,"qty":q,"unit":u,"price":p} for d,h,q,u,p in SAMPLE_ITEMS]
-if "qr_bytes"  not in st.session_state: st.session_state.qr_bytes  = None
-if "sig_bytes" not in st.session_state: st.session_state.sig_bytes = None
+if "qr_bytes" not in st.session_state:
+    try:
+        with open(QR_PATH, "rb") as _f:
+            st.session_state.qr_bytes = _f.read()
+    except Exception:
+        st.session_state.qr_bytes = None
+
+if "sig_bytes" not in st.session_state:
+    try:
+        with open(SIG_PATH, "rb") as _f:
+            st.session_state.sig_bytes = _f.read()
+    except Exception:
+        st.session_state.sig_bytes = None
 if "bank_name"   not in st.session_state: st.session_state.bank_name   = BANK_NAME
 if "bank_branch" not in st.session_state: st.session_state.bank_branch = BANK_BRANCH
 if "bank_acno"   not in st.session_state: st.session_state.bank_acno   = BANK_ACCOUNT_NO
@@ -591,28 +604,19 @@ with left:
         st.session_state.bank_branch = st.text_input("Branch",         value=st.session_state.bank_branch)
         st.session_state.bank_ifsc   = st.text_input("IFSC Code",      value=st.session_state.bank_ifsc)
 
-    st.markdown("**Upload QR Code & Signature** *(appear in PDF footer)*")
+    # QR & Signature loaded automatically from disk — show preview
+    st.markdown("**QR Code & Signature** *(loaded automatically from files)*")
     uq, us = st.columns(2)
     with uq:
-        qr_up = st.file_uploader("QR Code Image", type=["png","jpg","jpeg"], key="qr_up", label_visibility="collapsed")
-        if qr_up:
-            st.session_state.qr_bytes = qr_up.read()
         if st.session_state.qr_bytes:
-            st.image(st.session_state.qr_bytes, caption="QR Code", width=100)
-            if st.button("✕ Remove QR", key="rm_qr"):
-                st.session_state.qr_bytes = None; st.rerun()
+            st.image(st.session_state.qr_bytes, caption=f"✅ QR Code ({QR_PATH})", width=110)
         else:
-            st.info("📷 Upload QR Code")
+            st.warning(f"⚠️ QR Code not found\nPlace `{QR_PATH}` next to the script.")
     with us:
-        sig_up = st.file_uploader("Signature Image", type=["png","jpg","jpeg"], key="sig_up", label_visibility="collapsed")
-        if sig_up:
-            st.session_state.sig_bytes = sig_up.read()
         if st.session_state.sig_bytes:
-            st.image(st.session_state.sig_bytes, caption="Signature", width=120)
-            if st.button("✕ Remove Sig", key="rm_sig"):
-                st.session_state.sig_bytes = None; st.rerun()
+            st.image(st.session_state.sig_bytes, caption=f"✅ Signature ({SIG_PATH})", width=130)
         else:
-            st.info("✍️ Upload Signature")
+            st.warning(f"⚠️ Signature not found\nPlace `{SIG_PATH}` next to the script.")
 
     # Preview bank card
     st.markdown(f"""
