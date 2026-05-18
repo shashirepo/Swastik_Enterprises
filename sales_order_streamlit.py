@@ -565,7 +565,7 @@ with left:
     st.markdown('<div class="section-card"><div class="section-title">📦 Line Items</div>', unsafe_allow_html=True)
     st.markdown("""
 <style>
-.items-header{display:grid;grid-template-columns:3.5fr 1.1fr 0.6fr 0.8fr 0.85fr 0.75fr 0.35fr;
+.items-header{display:grid;grid-template-columns:3.5fr 1.1fr 0.6fr 1.2fr 0.85fr 0.75fr 0.35fr;
     font-weight:bold;border-bottom:1px solid #ccc;padding:6px 0;}
 .items-header span{padding:4px;}
 </style>
