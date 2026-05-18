@@ -51,20 +51,11 @@ SIG_PATH  = "sign.jpg"       # place signature image next to this script
 COMMON_UNITS = ["Pcs.", "MTR", "KG", "Set", "Pair", "Box", "Roll", "Ltr", "Nos."]
 
 SAMPLE_ITEMS = [
-    (
-    "SYSTEM SUPPLY & INSTALLATION 10KW ON GRID ROOF TOP SOLAR NDCR BIFACIAL 16x650WP WITH 10KW MICROTEK INVERTER",
-    "850440",
-    1.0,
-    "Nos.",
-    277000.00
-),
-(
-    "SYSTEM SUPPLY & INSTALLATION OF 10KW ON GRID COMPLETE BOS G+2 WITH STRUCTURE (MEDIUM 3FT X 5FT)",
-    "850440",
-    1.0,
-    "Nos.",
-    120000.00
-)
+    ("SOLAR STRUCTURE C CHANNEL 80*40 - PCS", "73089030", 1.0, "Pcs.", 1452.50),
+    ("SOLAR APOLLO PLAIN STRUT*41*41 - PCS",  "73089030", 1.0, "Pcs.", 1120.50),
+    ("SOLAR STRUCTURE C BASE PLATE",           "73089030", 1.0, "Pcs.",   80.00),
+    ("SOLAR STRUCTURE MID CLAMP",              "73089030", 1.0, "Pcs.",   25.00),
+    ("SOLAR STRUCTURE END CLAMP",              "73089030", 1.0, "Pcs.",   25.00),
 ]
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -565,7 +556,7 @@ with left:
     st.markdown('<div class="section-card"><div class="section-title">📦 Line Items</div>', unsafe_allow_html=True)
     st.markdown("""
 <style>
-.items-header{display:grid;grid-template-columns:2.5fr 1.3fr 0.6fr 0.9fr 0.85fr 0.75fr 0.35fr;
+.items-header{display:grid;grid-template-columns:3.5fr 1.1fr 0.6fr 0.8fr 0.85fr 0.75fr 0.35fr;
     font-weight:bold;border-bottom:1px solid #ccc;padding:6px 0;}
 .items-header span{padding:4px;}
 </style>
@@ -577,8 +568,8 @@ with left:
     row_list  = st.session_state.order_items
     to_delete = []
     for i, item in enumerate(row_list):
-        c1,c2,c3,c4,c5,c6,c7 = st.columns([2.2,1.3,.6,.9,.85,.75,.35])
-        with c1: item["desc"]  = st.text_input("Desc", value=item["desc"], key=f"d{i}", label_visibility="collapsed", placeholder="Description")
+        c1,c2,c3,c4,c5,c6,c7 = st.columns([3.5,1.1,.6,.8,.85,.75,.35])
+        with c1: item["desc"]  = st.text_area("Desc", value=item["desc"], key=f"d{i}", label_visibility="collapsed", placeholder="Description", height=68)
         with c2: item["hsn"]   = st.text_input("HSN",  value=item["hsn"],  key=f"h{i}", label_visibility="collapsed", placeholder="HSN")
         with c3: item["qty"]   = st.number_input("Qty", value=float(item["qty"]), min_value=0.0, step=1.0, key=f"q{i}", label_visibility="collapsed", format="%.2f")
         with c4: item["unit"]  = st.selectbox("Unit", COMMON_UNITS, index=COMMON_UNITS.index(item["unit"]) if item["unit"] in COMMON_UNITS else 0, key=f"u{i}", label_visibility="collapsed")
