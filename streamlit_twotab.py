@@ -632,7 +632,7 @@ st.markdown(f"""
   <div class="banner-logo">S</div>
   <div>
     <div class="banner-title">Trus India Enterprises</div>
-    <div class="banner-sub">BELWARIYA, VARANASI &nbsp;·&nbsp; GSTIN: 09AMAPV9671N1Z1</div>
+    <div class="banner-sub">O-529, GAUR CITY CENTRE, GREATER NOIDA (W)-201306, RGD. 454G NYAY KHAND-1, INDIRAPURAM GHAZIABAD (UP) &nbsp;·&nbsp; GSTIN: 09AMAPV9671N1Z1</div>
   </div>
   <div class="banner-right">
     <span class="banner-user">👤 {user_display}</span>
@@ -650,8 +650,7 @@ with st.sidebar:
 ---
 **{COMPANY_GSTIN}**
 
-📞 +91 9936148679 (Ravindra Singh)  
-📞 +91 9506114040 (Veer Singh)  
+📞 +91 9711193903 
 ✉ trusindia@gmail.com
 
 ---
