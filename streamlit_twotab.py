@@ -1,5 +1,5 @@
 """
-SWASTIK ENTERPRISES — Sales Management App
+Trus India Enterprises — Sales Management App
   Tab 1: Sales Order / Estimation Generator
   Tab 2: Tax Invoice (Bill) Generator
 Run:  streamlit run sales_order_streamlit.py
@@ -19,7 +19,7 @@ from reportlab.platypus import (
 )
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-COMPANY_NAME  = "SWASTIK ENTERPRISES"
+COMPANY_NAME  = "Trus India Enterprises"
 COMPANY_ADDR1 = "BELWARIYA, POST - MURDAHA, DISTRICT - VARANASI, UTTAR PRADESH, INDIA, PIN-221202"
 COMPANY_GSTIN = "GSTIN : 09QRFPS4600L1Z2"
 COMPANY_TEL   = "Tel. : +91 9936148679 (Ravindra Singh) , +91 9506114040 (Veer Singh)"
@@ -29,7 +29,7 @@ BANK_NAME       = "Indian Overseas Bank"
 BANK_BRANCH     = "Parmanandpur, Varanasi"
 BANK_ACCOUNT_NO = "346702000000466"
 BANK_IFSC       = "IOBA0003467"
-BANK_HOLDER     = "SWASTIK ENTERPRISES"
+BANK_HOLDER     = "Trus India Enterprises"
 
 CGST_RATE = 9.0
 SGST_RATE = 9.0
@@ -99,7 +99,7 @@ def show_login_page():
           <div style="width:64px;height:64px;background:linear-gradient(135deg,#2563eb,#1d4ed8);
                       border-radius:16px;display:flex;align-items:center;justify-content:center;
                       font-size:28px;color:white;font-weight:700;margin:0 auto 16px">S</div>
-          <div style="font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:4px">SWASTIK ENTERPRISES</div>
+          <div style="font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:4px">Trus India Enterprises</div>
           <div style="font-size:13px;color:#7a7a9d;margin-bottom:28px">Sales Management &nbsp;·&nbsp; Sign in to continue</div>
         </div>""", unsafe_allow_html=True)
         if st.session_state.get("login_error"): st.error("❌ Invalid username or password.")
@@ -123,7 +123,7 @@ def show_login_page():
                 for u, d in _load_users().items():
                     st.write(f"• **{u}** → {d['name']} | hash: `{d['password_hash'][:14]}…`")
         st.markdown("<p style='text-align:center;font-size:11px;color:#aaa;margin-top:16px'>"
-                    "🔒 Secured · SWASTIK ENTERPRISES © 2024</p>", unsafe_allow_html=True)
+                    "🔒 Secured · Trus India Enterprises © 2024</p>", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  HELPERS
@@ -565,7 +565,7 @@ def render_metrics(valid_items):
 # ══════════════════════════════════════════════════════════════════════════════
 #  STREAMLIT APP
 # ══════════════════════════════════════════════════════════════════════════════
-st.set_page_config(page_title="SWASTIK ENTERPRISES", page_icon="🧾",
+st.set_page_config(page_title="Trus India Enterprises", page_icon="🧾",
                    layout="wide", initial_sidebar_state="collapsed")
 
 if not st.session_state.get("authenticated", False):
@@ -631,7 +631,7 @@ st.markdown(f"""
 <div class="top-banner">
   <div class="banner-logo">S</div>
   <div>
-    <div class="banner-title">SWASTIK ENTERPRISES</div>
+    <div class="banner-title">Trus India Enterprises</div>
     <div class="banner-sub">BELWARIYA, VARANASI &nbsp;·&nbsp; GSTIN: 09QRFPS4600L1Z2</div>
   </div>
   <div class="banner-right">
