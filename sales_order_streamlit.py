@@ -51,11 +51,20 @@ SIG_PATH  = "sign.jpg"       # place signature image next to this script
 COMMON_UNITS = ["Pcs.", "MTR", "KG", "Set", "Pair", "Box", "Roll", "Ltr", "Nos."]
 
 SAMPLE_ITEMS = [
-    ("SOLAR STRUCTURE C CHANNEL 80*40 - PCS", "73089030", 1.0, "Pcs.", 1452.50),
-    ("SOLAR APOLLO PLAIN STRUT*41*41 - PCS",  "73089030", 1.0, "Pcs.", 1120.50),
-    ("SOLAR STRUCTURE C BASE PLATE",           "73089030", 1.0, "Pcs.",   80.00),
-    ("SOLAR STRUCTURE MID CLAMP",              "73089030", 1.0, "Pcs.",   25.00),
-    ("SOLAR STRUCTURE END CLAMP",              "73089030", 1.0, "Pcs.",   25.00),
+    (
+    "SYSTEM SUPPLY & INSTALLATION 10KW ON GRID ROOF TOP SOLAR NDCR BIFACIAL 16x650WP WITH 10KW MICROTEK INVERTER",
+    "850440",
+    1.0,
+    "Nos.",
+    277000.00
+),
+(
+    "SYSTEM SUPPLY & INSTALLATION OF 10KW ON GRID COMPLETE BOS G+2 WITH STRUCTURE (MEDIUM 3FT X 5FT)",
+    "850440",
+    1.0,
+    "Nos.",
+    120000.00
+)
 ]
 
 # ════════════════════════════════════════════════════════════════════════════════
