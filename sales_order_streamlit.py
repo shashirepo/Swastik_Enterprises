@@ -51,20 +51,11 @@ SIG_PATH  = "sign.jpg"       # place signature image next to this script
 COMMON_UNITS = ["Pcs.", "MTR", "KG", "Set", "Pair", "Box", "Roll", "Ltr", "Nos."]
 
 SAMPLE_ITEMS = [
-    (
-    "SYSTEM SUPPLY & INSTALLATION 10KW ON GRID ROOF TOP SOLAR NDCR BIFACIAL 16x650WP WITH 10KW MICROTEK INVERTER",
-    "850440",
-    1.0,
-    "Nos.",
-    277000.00
-),
-(
-    "SYSTEM SUPPLY & INSTALLATION OF 10KW ON GRID COMPLETE BOS G+2 WITH STRUCTURE (MEDIUM 3FT X 5FT)",
-    "850440",
-    1.0,
-    "Nos.",
-    120000.00
-)
+    ("SOLAR STRUCTURE C CHANNEL 80*40 - PCS", "73089030", 1.0, "Pcs.", 1452.50),
+    ("SOLAR APOLLO PLAIN STRUT*41*41 - PCS",  "73089030", 1.0, "Pcs.", 1120.50),
+    ("SOLAR STRUCTURE C BASE PLATE",           "73089030", 1.0, "Pcs.",   80.00),
+    ("SOLAR STRUCTURE MID CLAMP",              "73089030", 1.0, "Pcs.",   25.00),
+    ("SOLAR STRUCTURE END CLAMP",              "73089030", 1.0, "Pcs.",   25.00),
 ]
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -254,17 +245,38 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
               Spacer(1,1*mm)]
 
     # ── Items table ──────────────────────────────────────────────────────────
-    hdr = ["S.N.","Description of Goods","HSN/SAC\nCode","Qty.","Unit","Price","Amount(`)"]
-    cw  = [W*.05, W*.35, W*.10, W*.07, W*.07, W*.12, W*.14]
+    hdr_s = ps("H", fontSize=7.5, fontName="Helvetica-Bold", alignment=TA_CENTER, leading=10)
+    hdr_ls = ps("HL", fontSize=7.5, fontName="Helvetica-Bold", alignment=TA_LEFT, leading=10)
+    hdr = [
+        Paragraph("S.N.",                hdr_s),
+        Paragraph("Description of Goods",hdr_ls),
+        Paragraph("HSN/SAC<br/>Code",    hdr_s),
+        Paragraph("Qty.",                hdr_s),
+        Paragraph("Unit",                hdr_s),
+        Paragraph("Price",               hdr_s),
+        Paragraph("Amount(`)",           hdr_s),
+    ]
+    cw  = [W*.05, W*.37, W*.10, W*.07, W*.07, W*.12, W*.12]
     rows = [hdr]
     subtotal = total_qty = 0.0
+
+    # Style for wrapping text inside table cells
+    wrap_s  = ps("W",  fontSize=7.5, alignment=TA_LEFT,   leading=10, wordWrap='LTR')
+    wrap_c  = ps("WC", fontSize=7.5, alignment=TA_CENTER, leading=10, wordWrap='LTR')
+    wrap_r  = ps("WR", fontSize=7.5, alignment=TA_RIGHT,  leading=10, wordWrap='LTR')
 
     for i, it in enumerate(items, 1):
         amt = round(it["qty"]*it["price"], 2)
         subtotal  += amt; total_qty += it["qty"]
-        rows.append([str(i), it["desc"], it["hsn"],
-                     f"{it['qty']:.2f}", it["unit"],
-                     f"{it['price']:,.2f}", f"{amt:,.2f}"])
+        rows.append([
+            Paragraph(str(i),              wrap_c),
+            Paragraph(it["desc"],          wrap_s),   # ← wraps long description
+            Paragraph(it["hsn"],           wrap_c),
+            Paragraph(f"{it['qty']:.2f}",  wrap_c),
+            Paragraph(it["unit"],          wrap_c),
+            Paragraph(f"{it['price']:,.2f}", wrap_r),
+            Paragraph(f"{amt:,.2f}",       wrap_r),
+        ])
 
     cgst  = round(subtotal*CGST_RATE/100, 2)
     sgst  = round(subtotal*SGST_RATE/100, 2)
@@ -289,9 +301,7 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
         ("FONTNAME",      (0,0),   (-1,0),   "Helvetica-Bold"),
         ("FONTNAME",      (0,n-1), (-1,n-1), "Helvetica-Bold"),
         ("FONTSIZE",      (0,0),   (-1,-1),  7.5),
-        ("ALIGN",         (0,0),   (-1,-1),  "CENTER"),
-        ("ALIGN",         (1,1),   (1,n-2),  "LEFT"),
-        ("ALIGN",         (5,1),   (-1,-1),  "RIGHT"),
+        # Alignment handled by Paragraph styles inside each cell
         ("VALIGN",        (0,0),   (-1,-1),  "MIDDLE"),
         ("LEFTPADDING",   (0,0),   (-1,-1),  2),
         ("RIGHTPADDING",  (0,0),   (-1,-1),  2),
@@ -577,7 +587,7 @@ with left:
     row_list  = st.session_state.order_items
     to_delete = []
     for i, item in enumerate(row_list):
-        c1,c2,c3,c4,c5,c6,c7 = st.columns([3.5,1.1,.6,.8,.85,.75,.35])
+        c1,c2,c3,c4,c5,c6,c7 = st.columns([3.5,1.1,.6,1.2,.85,.75,.35])
         with c1: item["desc"]  = st.text_area("Desc", value=item["desc"], key=f"d{i}", label_visibility="collapsed", placeholder="Description", height=68)
         with c2: item["hsn"]   = st.text_input("HSN",  value=item["hsn"],  key=f"h{i}", label_visibility="collapsed", placeholder="HSN")
         with c3: item["qty"]   = st.number_input("Qty", value=float(item["qty"]), min_value=0.0, step=1.0, key=f"q{i}", label_visibility="collapsed", format="%.2f")
