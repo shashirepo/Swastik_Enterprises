@@ -20,10 +20,10 @@ from reportlab.platypus import (
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 COMPANY_NAME  = "Trus India Enterprises"
-COMPANY_ADDR1 = "BELWARIYA, POST - MURDAHA, DISTRICT - VARANASI, UTTAR PRADESH, INDIA, PIN-221202"
-COMPANY_GSTIN = "GSTIN : 09QRFPS4600L1Z2"
-COMPANY_TEL   = "Tel. : +91 9936148679 (Ravindra Singh) , +91 9506114040 (Veer Singh)"
-COMPANY_EMAIL = "Email : swastikenterprises8679@gmail.com"
+COMPANY_ADDR1 = "O-529, GAUR CITY CENTRE, GREATER NOIDA (W)-201306, RGD. 454G NYAY KHAND-1, INDIRAPURAM GHAZIABAD (UP), BRANCH OFFICE: S 8/220-2, KHAJURI, PANDEYPUR, VARANASI-221002"
+COMPANY_GSTIN = "GSTIN : 09AMAPV9671N1Z1"
+COMPANY_TEL   = "Tel. : +91 9711193903"
+COMPANY_EMAIL = "Email : trusindia@gmail.com"
 
 BANK_NAME       = "Indian Overseas Bank"
 BANK_BRANCH     = "Parmanandpur, Varanasi"
@@ -632,7 +632,7 @@ st.markdown(f"""
   <div class="banner-logo">S</div>
   <div>
     <div class="banner-title">Trus India Enterprises</div>
-    <div class="banner-sub">BELWARIYA, VARANASI &nbsp;·&nbsp; GSTIN: 09QRFPS4600L1Z2</div>
+    <div class="banner-sub">BELWARIYA, VARANASI &nbsp;·&nbsp; GSTIN: 09AMAPV9671N1Z1</div>
   </div>
   <div class="banner-right">
     <span class="banner-user">👤 {user_display}</span>
@@ -652,7 +652,7 @@ with st.sidebar:
 
 📞 +91 9936148679 (Ravindra Singh)  
 📞 +91 9506114040 (Veer Singh)  
-✉ swastikenterprises8679@gmail.com
+✉ trusindia@gmail.com
 
 ---
 **Bank:** {BANK_NAME}  
