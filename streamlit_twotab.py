@@ -1,8 +1,8 @@
 """
 Trus India Enterprises — Sales Management App
-  Tab 1: Sales Order / Estimation Generator
+  Tab 1: Sales Order / Estimation Generator (with Brand + per-item GST%)
   Tab 2: Tax Invoice (Bill) Generator
-Run:  streamlit run sales_order_streamlit.py
+Run:  streamlit run trus_india_streamlit.py
 Req:  pip install streamlit reportlab Pillow
 """
 
@@ -20,7 +20,9 @@ from reportlab.platypus import (
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 COMPANY_NAME  = "Trus India Enterprises"
-COMPANY_ADDR1 = "O-529, GAUR CITY CENTRE, GREATER NOIDA (W)-201306, RGD. 454G NYAY KHAND-1, INDIRAPURAM GHAZIABAD (UP), BRANCH OFFICE: S 8/220-2, KHAJURI, PANDEYPUR, VARANASI-221002"
+COMPANY_ADDR1 = "O-529, GAUR CITY CENTRE, GREATER NOIDA (W)-201306"
+COMPANY_ADDR2 = "RGD. 454G NYAY KHAND-1, INDIRAPURAM GHAZIABAD (UP)"
+COMPANY_ADDR3 = "BRANCH: S 8/220-2, KHAJURI, PANDEYPUR, VARANASI-221002"
 COMPANY_GSTIN = "GSTIN : 09AMAPV9671N1Z1"
 COMPANY_TEL   = "Tel. : +91 9711193903"
 COMPANY_EMAIL = "Email : trusindia@gmail.com"
@@ -51,11 +53,11 @@ TERMS_BILL = [
 PAYMENT_MODES = ["Cash", "UPI", "Bank Transfer", "Cheque", "NEFT/RTGS", "Other"]
 
 SAMPLE_ITEMS = [
-    ("SOLAR STRUCTURE C CHANNEL 80*40 - PCS", "73089030", 1.0, "Pcs.", 1452.50),
-    ("SOLAR APOLLO PLAIN STRUT*41*41 - PCS",  "73089030", 1.0, "Pcs.", 1120.50),
-    ("SOLAR STRUCTURE C BASE PLATE",          "73089030", 1.0, "Pcs.",   80.00),
-    ("SOLAR STRUCTURE MID CLAMP",             "73089030", 1.0, "Pcs.",   25.00),
-    ("SOLAR STRUCTURE END CLAMP",             "73089030", 1.0, "Pcs.",   25.00),
+    ("SOLAR STRUCTURE C CHANNEL 80*40 - PCS", "73089030", 1.0, "Pcs.", 1452.50, "GENERIC", 18.0),
+    ("SOLAR APOLLO PLAIN STRUT*41*41 - PCS",  "73089030", 1.0, "Pcs.", 1120.50, "GENERIC", 18.0),
+    ("SOLAR STRUCTURE C BASE PLATE",          "73089030", 1.0, "Pcs.",   80.00, "GENERIC", 18.0),
+    ("SOLAR STRUCTURE MID CLAMP",             "73089030", 1.0, "Pcs.",   25.00, "GENERIC", 18.0),
+    ("SOLAR STRUCTURE END CLAMP",             "73089030", 1.0, "Pcs.",   25.00, "GENERIC", 18.0),
 ]
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -98,7 +100,7 @@ def show_login_page():
                     box-shadow:0 20px 60px rgba(0,0,0,.35);text-align:center;margin-top:60px">
           <div style="width:64px;height:64px;background:linear-gradient(135deg,#2563eb,#1d4ed8);
                       border-radius:16px;display:flex;align-items:center;justify-content:center;
-                      font-size:28px;color:white;font-weight:700;margin:0 auto 16px">S</div>
+                      font-size:28px;color:white;font-weight:700;margin:0 auto 16px">T</div>
           <div style="font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:4px">Trus India Enterprises</div>
           <div style="font-size:13px;color:#7a7a9d;margin-bottom:28px">Sales Management &nbsp;·&nbsp; Sign in to continue</div>
         </div>""", unsafe_allow_html=True)
@@ -128,8 +130,8 @@ def show_login_page():
 # ══════════════════════════════════════════════════════════════════════════════
 #  HELPERS
 # ══════════════════════════════════════════════════════════════════════════════
-def gen_order_no():  return "SWSENT" + "".join(random.choices(string.digits, k=3))
-def gen_invoice_no(): return "SWSINV" + "".join(random.choices(string.digits, k=3))
+def gen_order_no():   return "TRINV" + "".join(random.choices(string.digits, k=3))
+def gen_invoice_no(): return "TRIBIL" + "".join(random.choices(string.digits, k=3))
 
 def num_to_words(amount):
     ones=["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten",
@@ -160,7 +162,6 @@ def _make_ps(base):
 def _common_footer(story, W, ps, qr_bytes, sig_bytes,
                    bank_name, bank_branch, bank_acno, bank_ifsc, bank_holder,
                    terms, for_label):
-    """Shared bank + terms + signature footer used by both PDFs."""
     sml_s = ps("FS",  fontSize=7, alignment=TA_LEFT,  leading=10)
     sml_b = ps("FSB", fontSize=7, fontName="Helvetica-Bold", alignment=TA_LEFT, leading=10)
 
@@ -208,7 +209,7 @@ def _common_footer(story, W, ps, qr_bytes, sig_bytes,
     story.append(footer_t)
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  PDF 1 — SALES ORDER / ESTIMATION
+#  PDF 1 — SALES ORDER / ESTIMATION  (with Brand + per-item GST%)
 # ══════════════════════════════════════════════════════════════════════════════
 def build_order_pdf(party_name, party_city, order_no, order_date, items,
                     qr_bytes=None, sig_bytes=None,
@@ -222,7 +223,7 @@ def build_order_pdf(party_name, party_city, order_no, order_date, items,
     W   = A4[0]-30*mm
     ps  = _make_ps(getSampleStyleSheet())
 
-    title_s = ps("OT", fontSize=14, fontName="Helvetica-Bold", alignment=TA_CENTER, spaceAfter=6)
+    title_s = ps("OT", fontSize=14, fontName="Helvetica-Bold", alignment=TA_CENTER, spaceAfter=4)
     ctr_s   = ps("OC", fontSize=8,  alignment=TA_CENTER, leading=11)
     lft_s   = ps("OL", fontSize=8,  alignment=TA_LEFT,   leading=11)
     bold_c  = ps("OBC",fontSize=8,  fontName="Helvetica-Bold", alignment=TA_CENTER)
@@ -237,13 +238,15 @@ def build_order_pdf(party_name, party_city, order_no, order_date, items,
     # Header
     try: logo = RLImage(LOGO_PATH, width=33*mm, height=30*mm)
     except: logo = Paragraph("", lft_s)
+    addr_full = f"{COMPANY_ADDR1}<br/>{COMPANY_ADDR2}<br/>{COMPANY_ADDR3}"
     hdr_txt = [Paragraph("<u>ORDER ESTIMATION</u>",bold_c),
                Paragraph(COMPANY_NAME,title_s),
-               Paragraph(COMPANY_ADDR1,ctr_s),
+               Paragraph(addr_full,ctr_s),
                Paragraph(COMPANY_GSTIN,ctr_s),
                Paragraph(f"{COMPANY_TEL}<br/>{COMPANY_EMAIL}",ctr_s)]
     ht = Table([[logo,hdr_txt]], colWidths=[W*.20,W*.80])
-    ht.setStyle(TableStyle([("BOX",(0,0),(-1,-1),.9,colors.black),("VALIGN",(0,0),(-1,-1),"TOP"),
+    ht.setStyle(TableStyle([("BOX",(0,0),(-1,-1),.9,colors.black),
+        ("VALIGN",(0,0),(-1,-1),"TOP"),
         ("LEFTPADDING",(0,0),(-1,-1),4),("RIGHTPADDING",(0,0),(-1,-1),4),
         ("TOPPADDING",(0,0),(-1,-1),3),("BOTTOMPADDING",(0,0),(-1,-1),3)]))
     story += [ht, Spacer(1,5)]
@@ -260,26 +263,52 @@ def build_order_pdf(party_name, party_city, order_no, order_date, items,
               Paragraph("We are pleased to receive the order for the following items :", lft_s),
               Spacer(1,1*mm)]
 
-    # Items table
-    hdr_row = [Paragraph("S.N.",hdr_s),Paragraph("Description of Goods",hdr_ls),
-               Paragraph("HSN/SAC<br/>Code",hdr_s),Paragraph("Qty.",hdr_s),
-               Paragraph("Unit",hdr_s),Paragraph("Price",hdr_s),Paragraph("Amount(`)",hdr_s)]
-    cw = [W*.05,W*.37,W*.10,W*.07,W*.07,W*.12,W*.12]
+    # Items table — 9 columns including Brand and GST%
+    hdr_row = [
+        Paragraph("S.N.",                hdr_s),
+        Paragraph("Description of Goods",hdr_ls),
+        Paragraph("Brand",               hdr_s),
+        Paragraph("HSN/SAC<br/>Code",    hdr_s),
+        Paragraph("Qty.",                hdr_s),
+        Paragraph("Unit",                hdr_s),
+        Paragraph("GST%",               hdr_s),
+        Paragraph("Price",               hdr_s),
+        Paragraph("Amount(`)",           hdr_s),
+    ]
+    cw = [W*.04, W*.28, W*.09, W*.09, W*.06, W*.06, W*.06, W*.11, W*.11]
+
     rows = [hdr_row]; subtotal = total_qty = 0.0
     for i,it in enumerate(items,1):
-        amt=round(it["qty"]*it["price"],2); subtotal+=amt; total_qty+=it["qty"]
-        rows.append([Paragraph(str(i),wrap_c),Paragraph(it["desc"],wrap_s),
-                     Paragraph(it["hsn"],wrap_c),Paragraph(f"{it['qty']:.2f}",wrap_c),
-                     Paragraph(it["unit"],wrap_c),Paragraph(f"{it['price']:,.2f}",wrap_r),
-                     Paragraph(f"{amt:,.2f}",wrap_r)])
-    cgst=round(subtotal*CGST_RATE/100,2); sgst=round(subtotal*SGST_RATE/100,2)
-    tax=round(cgst+sgst,2); grand=round(subtotal+tax,2)
-    rows += [["","","","","","",f"{subtotal:,.2f}"],
-             ["","","","","Add : CGST",f"@ {CGST_RATE:.2f} %",f"{cgst:,.2f}"],
-             ["","","","","Add : SGST",f"@ {SGST_RATE:.2f} %",f"{sgst:,.2f}"],
-             ["","Grand Total","",f"{int(total_qty)} Units","","`",f"{grand:,.2f}"]]
-    n=len(rows)
-    it_t=Table(rows,colWidths=cw,repeatRows=1)
+        item_gst = float(it.get("gst", 18.0))
+        amt = round(it["qty"]*it["price"], 2)
+        subtotal += amt; total_qty += it["qty"]
+        rows.append([
+            Paragraph(str(i),                     wrap_c),
+            Paragraph(it["desc"],                 wrap_s),
+            Paragraph(it.get("brand",""),         wrap_c),
+            Paragraph(it["hsn"],                  wrap_c),
+            Paragraph(f"{it['qty']:.2f}",         wrap_c),
+            Paragraph(it["unit"],                 wrap_c),
+            Paragraph(f"{item_gst:.0f}%",         wrap_c),
+            Paragraph(f"{it['price']:,.2f}",      wrap_r),
+            Paragraph(f"{amt:,.2f}",              wrap_r),
+        ])
+
+    cgst  = round(sum(it["qty"]*it["price"]*float(it.get("gst",18.0))/2/100 for it in items), 2)
+    sgst  = cgst
+    tax   = round(cgst+sgst, 2)
+    grand = round(subtotal+tax, 2)
+    avg_gst = round(sum(it["qty"]*it["price"]*float(it.get("gst",18.0)) for it in items)
+                    / max(subtotal,1), 1) if items else 18.0
+
+    rows += [
+        ["","","","","","","","",          f"{subtotal:,.2f}"],
+        ["","","","","","Add : CGST","","",f"{cgst:,.2f}"],
+        ["","","","","","Add : SGST","","",f"{sgst:,.2f}"],
+        ["","Grand Total","","",f"{int(total_qty)} Units","","","`",f"{grand:,.2f}"],
+    ]
+    n = len(rows)
+    it_t = Table(rows, colWidths=cw, repeatRows=1)
     it_t.setStyle(TableStyle([
         ("BOX",(0,0),(-1,-1),.5,colors.black),
         ("INNERGRID",(0,0),(-1,n-5),.3,colors.black),
@@ -292,12 +321,13 @@ def build_order_pdf(party_name, party_city, order_no, order_date, items,
         ("VALIGN",(0,0),(-1,-1),"MIDDLE"),
         ("LEFTPADDING",(0,0),(-1,-1),2),("RIGHTPADDING",(0,0),(-1,-1),2),
         ("TOPPADDING",(0,0),(-1,-1),2),("BOTTOMPADDING",(0,0),(-1,-1),2),
-        ("SPAN",(1,n-1),(3,n-1))]))
-    story += [it_t,Spacer(1,2*mm)]
+        ("SPAN",(1,n-1),(4,n-1)),
+    ]))
+    story += [it_t, Spacer(1,2*mm)]
 
     # Tax summary
     tr=[["Tax Rate","Taxable Amt.","CGST Amt.","SGST Amt.","Total Tax"],
-        ["18%",f"{subtotal:,.2f}",f"{cgst:,.2f}",f"{sgst:,.2f}",f"{tax:,.2f}"]]
+        [f"{avg_gst:.1f}%",f"{subtotal:,.2f}",f"{cgst:,.2f}",f"{sgst:,.2f}",f"{tax:,.2f}"]]
     tt=Table(tr,colWidths=[W*.12,W*.22,W*.22,W*.22,W*.22])
     tt.setStyle(TableStyle([("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
         ("FONTSIZE",(0,0),(-1,-1),7.5),("ALIGN",(0,0),(-1,-1),"CENTER"),
@@ -334,8 +364,6 @@ def build_invoice_pdf(party_name, party_city, party_gstin, party_phone,
     ctr_s    = ps("IC", fontSize=8,  alignment=TA_CENTER, leading=11)
     lft_s    = ps("IL", fontSize=8,  alignment=TA_LEFT,   leading=11)
     rgt_s    = ps("IR", fontSize=8,  alignment=TA_RIGHT,  leading=11)
-    bold_c   = ps("IBC",fontSize=8,  fontName="Helvetica-Bold", alignment=TA_CENTER)
-    bold_l   = ps("IBL",fontSize=8,  fontName="Helvetica-Bold", alignment=TA_LEFT)
     hdr_s    = ps("IH", fontSize=7.5,fontName="Helvetica-Bold", alignment=TA_CENTER, leading=10)
     hdr_ls   = ps("IHL",fontSize=7.5,fontName="Helvetica-Bold", alignment=TA_LEFT,   leading=10)
     wrap_s   = ps("IW", fontSize=7.5,alignment=TA_LEFT,   leading=10, wordWrap="LTR")
@@ -346,12 +374,12 @@ def build_invoice_pdf(party_name, party_city, party_gstin, party_phone,
 
     story = []
 
-    # Header — logo left, company centre, TAX INVOICE label right
     try: logo = RLImage(LOGO_PATH, width=33*mm, height=30*mm)
     except: logo = Paragraph("", lft_s)
 
+    addr_full = f"{COMPANY_ADDR1}<br/>{COMPANY_ADDR2}<br/>{COMPANY_ADDR3}"
     company_cell = [Paragraph(COMPANY_NAME,title_s),
-                    Paragraph(COMPANY_ADDR1,ctr_s),
+                    Paragraph(addr_full,ctr_s),
                     Paragraph(COMPANY_GSTIN,ctr_s),
                     Paragraph(f"{COMPANY_TEL}<br/>{COMPANY_EMAIL}",ctr_s)]
     invoice_label= [Paragraph("TAX INVOICE",inv_title),
@@ -359,41 +387,29 @@ def build_invoice_pdf(party_name, party_city, party_gstin, party_phone,
                     Paragraph(f"<b>Date:</b> {invoice_date}",rgt_s),
                     Paragraph(f"<b>Due Date:</b> {due_date}",rgt_s)]
 
-    ht = Table([[logo, company_cell, invoice_label]],
-               colWidths=[W*.18, W*.50, W*.32])
+    ht = Table([[logo, company_cell, invoice_label]], colWidths=[W*.18, W*.50, W*.32])
     ht.setStyle(TableStyle([
         ("BOX",(0,0),(-1,-1),.9,colors.black),
         ("LINEBEFORE",(1,0),(1,0),.5,colors.black),
         ("LINEBEFORE",(2,0),(2,0),.5,colors.black),
-        ("VALIGN",(0,0),(-1,-1),"MIDDLE"),
-        ("ALIGN",(2,0),(2,0),"RIGHT"),
+        ("VALIGN",(0,0),(-1,-1),"MIDDLE"),("ALIGN",(2,0),(2,0),"RIGHT"),
         ("LEFTPADDING",(0,0),(-1,-1),4),("RIGHTPADDING",(0,0),(-1,-1),4),
         ("TOPPADDING",(0,0),(-1,-1),4),("BOTTOMPADDING",(0,0),(-1,-1),4)]))
     story += [ht, Spacer(1,4)]
 
-    # Bill To / Invoice Details box
-    bill_to = (f"<b>Bill To:</b><br/>"
-               f"<b>{party_name}</b><br/>"
-               f"{party_city}<br/>"
-               f"GSTIN: {party_gstin or 'N/A'}<br/>"
-               f"Phone: {party_phone or 'N/A'}")
-    inv_det = (f"<b>Payment Mode:</b> {payment_mode}<br/>"
-               f"<b>Bank:</b> {bank_name}<br/>"
-               f"<b>A/c No:</b> {bank_acno}<br/>"
-               f"<b>IFSC:</b> {bank_ifsc}")
-    bt = Table([[Paragraph(bill_to,lft_s), Paragraph(inv_det,lft_s)]],
-               colWidths=[W*.55, W*.45])
+    bill_to = (f"<b>Bill To:</b><br/><b>{party_name}</b><br/>{party_city}<br/>"
+               f"GSTIN: {party_gstin or 'N/A'}<br/>Phone: {party_phone or 'N/A'}")
+    inv_det = (f"<b>Payment Mode:</b> {payment_mode}<br/><b>Bank:</b> {bank_name}<br/>"
+               f"<b>A/c No:</b> {bank_acno}<br/><b>IFSC:</b> {bank_ifsc}")
+    bt = Table([[Paragraph(bill_to,lft_s), Paragraph(inv_det,lft_s)]], colWidths=[W*.55, W*.45])
     bt.setStyle(TableStyle([
-        ("BOX",(0,0),(-1,-1),.5,colors.black),
-        ("LINEBEFORE",(1,0),(1,0),.5,colors.black),
-        ("BACKGROUND",(0,0),(-1,-1),colors.HexColor("#f0f4ff")),
-        ("VALIGN",(0,0),(-1,-1),"TOP"),
+        ("BOX",(0,0),(-1,-1),.5,colors.black),("LINEBEFORE",(1,0),(1,0),.5,colors.black),
+        ("BACKGROUND",(0,0),(-1,-1),colors.HexColor("#f0f4ff")),("VALIGN",(0,0),(-1,-1),"TOP"),
         ("LEFTPADDING",(0,0),(-1,-1),5),("RIGHTPADDING",(0,0),(-1,-1),5),
         ("TOPPADDING",(0,0),(-1,-1),4),("BOTTOMPADDING",(0,0),(-1,-1),4)]))
     story += [bt, Spacer(1,2*mm)]
 
-    # Items table
-    hdr_row=[Paragraph("S.N.",hdr_s),Paragraph("Description of Goods/Services",hdr_ls),
+    hdr_row=[Paragraph("S.N.",hdr_s),Paragraph("Description",hdr_ls),
              Paragraph("HSN/SAC",hdr_s),Paragraph("Qty.",hdr_s),
              Paragraph("Unit",hdr_s),Paragraph("Rate (₹)",hdr_s),
              Paragraph("CGST\n9%",hdr_s),Paragraph("SGST\n9%",hdr_s),
@@ -402,71 +418,54 @@ def build_invoice_pdf(party_name, party_city, party_gstin, party_phone,
     rows=[hdr_row]; subtotal=total_qty=0.0
     for i,it in enumerate(items,1):
         base_amt=round(it["qty"]*it["price"],2)
-        cgst_cell=round(base_amt*CGST_RATE/100,2)
-        sgst_cell=round(base_amt*SGST_RATE/100,2)
-        total_cell=round(base_amt+cgst_cell+sgst_cell,2)
+        cgst_c=round(base_amt*CGST_RATE/100,2); sgst_c=round(base_amt*SGST_RATE/100,2)
+        total_c=round(base_amt+cgst_c+sgst_c,2)
         subtotal+=base_amt; total_qty+=it["qty"]
         rows.append([Paragraph(str(i),wrap_c),Paragraph(it["desc"],wrap_s),
                      Paragraph(it["hsn"],wrap_c),Paragraph(f"{it['qty']:.2f}",wrap_c),
                      Paragraph(it["unit"],wrap_c),Paragraph(f"{it['price']:,.2f}",wrap_r),
-                     Paragraph(f"{cgst_cell:,.2f}",wrap_r),Paragraph(f"{sgst_cell:,.2f}",wrap_r),
-                     Paragraph(f"{total_cell:,.2f}",wrap_r)])
-
-    cgst_total=round(subtotal*CGST_RATE/100,2)
-    sgst_total=round(subtotal*SGST_RATE/100,2)
-    tax_total =round(cgst_total+sgst_total,2)
-    grand     =round(subtotal+tax_total,2)
-
+                     Paragraph(f"{cgst_c:,.2f}",wrap_r),Paragraph(f"{sgst_c:,.2f}",wrap_r),
+                     Paragraph(f"{total_c:,.2f}",wrap_r)])
+    cgst_t=round(subtotal*CGST_RATE/100,2); sgst_t=round(subtotal*SGST_RATE/100,2)
+    tax_t=round(cgst_t+sgst_t,2); grand=round(subtotal+tax_t,2)
     rows.append(["","",Paragraph("<b>Totals</b>",hdr_s),"","","",
-                 Paragraph(f"<b>{cgst_total:,.2f}</b>",wrap_r),
-                 Paragraph(f"<b>{sgst_total:,.2f}</b>",wrap_r),
+                 Paragraph(f"<b>{cgst_t:,.2f}</b>",wrap_r),
+                 Paragraph(f"<b>{sgst_t:,.2f}</b>",wrap_r),
                  Paragraph(f"<b>{grand:,.2f}</b>",wrap_r)])
     n=len(rows)
     it_t=Table(rows,colWidths=cw,repeatRows=1)
     it_t.setStyle(TableStyle([
-        ("BOX",(0,0),(-1,-1),.5,colors.black),
-        ("INNERGRID",(0,0),(-1,n-2),.3,colors.black),
+        ("BOX",(0,0),(-1,-1),.5,colors.black),("INNERGRID",(0,0),(-1,n-2),.3,colors.black),
         ("LINEABOVE",(0,n-1),(-1,n-1),.8,colors.black),
         ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#1d4ed8")),
         ("TEXTCOLOR",(0,0),(-1,0),colors.white),
         ("BACKGROUND",(0,n-1),(-1,n-1),colors.HexColor("#eff6ff")),
-        ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
-        ("FONTNAME",(0,n-1),(-1,n-1),"Helvetica-Bold"),
-        ("FONTSIZE",(0,0),(-1,-1),7.5),
-        ("VALIGN",(0,0),(-1,-1),"MIDDLE"),
+        ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("FONTNAME",(0,n-1),(-1,n-1),"Helvetica-Bold"),
+        ("FONTSIZE",(0,0),(-1,-1),7.5),("VALIGN",(0,0),(-1,-1),"MIDDLE"),
         ("LEFTPADDING",(0,0),(-1,-1),2),("RIGHTPADDING",(0,0),(-1,-1),2),
         ("TOPPADDING",(0,0),(-1,-1),2),("BOTTOMPADDING",(0,0),(-1,-1),2)]))
     story += [it_t, Spacer(1,2*mm)]
 
-    # Summary box (right-aligned)
-    sum_rows=[
-        ["Subtotal (excl. GST)",        f"₹ {subtotal:,.2f}"],
-        [f"CGST @ {CGST_RATE}%",        f"₹ {cgst_total:,.2f}"],
-        [f"SGST @ {SGST_RATE}%",        f"₹ {sgst_total:,.2f}"],
-        ["Total Tax",                   f"₹ {tax_total:,.2f}"],
-        ["GRAND TOTAL",                 f"₹ {grand:,.2f}"],
-    ]
-    sum_t=Table(sum_rows, colWidths=[W*.25,W*.15],
-                hAlign="RIGHT")
-    sum_t.setStyle(TableStyle([
-        ("FONTSIZE",(0,0),(-1,-1),8),
+    sum_rows=[["Subtotal (excl. GST)",f"₹ {subtotal:,.2f}"],
+              [f"CGST @ {CGST_RATE}%",f"₹ {cgst_t:,.2f}"],
+              [f"SGST @ {SGST_RATE}%",f"₹ {sgst_t:,.2f}"],
+              ["Total Tax",f"₹ {tax_t:,.2f}"],["GRAND TOTAL",f"₹ {grand:,.2f}"]]
+    sum_t=Table(sum_rows,colWidths=[W*.25,W*.15],hAlign="RIGHT")
+    sum_t.setStyle(TableStyle([("FONTSIZE",(0,0),(-1,-1),8),
         ("ALIGN",(0,0),(0,-1),"RIGHT"),("ALIGN",(1,0),(1,-1),"RIGHT"),
         ("FONTNAME",(0,4),(1,4),"Helvetica-Bold"),
         ("BACKGROUND",(0,4),(1,4),colors.HexColor("#1d4ed8")),
         ("TEXTCOLOR",(0,4),(1,4),colors.white),
-        ("LINEABOVE",(0,4),(1,4),.8,colors.black),
-        ("LINEBELOW",(0,4),(1,4),.8,colors.black),
+        ("LINEABOVE",(0,4),(1,4),.8,colors.black),("LINEBELOW",(0,4),(1,4),.8,colors.black),
         ("LEFTPADDING",(0,0),(-1,-1),6),("RIGHTPADDING",(0,0),(-1,-1),6),
         ("TOPPADDING",(0,0),(-1,-1),3),("BOTTOMPADDING",(0,0),(-1,-1),3),
         ("ROWBACKGROUNDS",(0,0),(-1,3),[colors.white,colors.HexColor("#f0f4ff")])]))
-    story += [sum_t, Spacer(1,2*mm),
+    story += [sum_t,Spacer(1,2*mm),
               Paragraph(f"<i>{num_to_words(grand)}</i>",
-                        ps("IAMW",fontSize=8,alignment=TA_LEFT,leading=11)),
-              Spacer(1,3*mm)]
+                        ps("IAMW",fontSize=8,alignment=TA_LEFT,leading=11)),Spacer(1,3*mm)]
 
     _common_footer(story,W,ps,qr_bytes,sig_bytes,bank_name,bank_branch,
-                   bank_acno,bank_ifsc,bank_holder,TERMS_BILL,
-                   f"For {COMPANY_NAME}:")
+                   bank_acno,bank_ifsc,bank_holder,TERMS_BILL,f"For {COMPANY_NAME}:")
     doc.build(story)
     return buf.getvalue()
 
@@ -475,15 +474,30 @@ def build_invoice_pdf(party_name, party_city, party_gstin, party_phone,
 #  SHARED UI HELPERS
 # ══════════════════════════════════════════════════════════════════════════════
 def render_items_ui(key_prefix, items_key):
-    """Render the line-items editor. Returns list of valid items."""
-    st.markdown("""
+    show_extra = (key_prefix == "o")   # Brand + GST% only in Sales Order tab
+
+    if show_extra:
+        st.markdown("""
 <style>
-.items-header{display:grid;
+.items-header-o{display:grid;
+    grid-template-columns:2.8fr 1.0fr 0.9fr 0.6fr 1.0fr 0.6fr 0.7fr 0.65fr 0.35fr;
+    font-weight:bold;border-bottom:1px solid #ccc;padding:6px 0;}
+.items-header-o span{padding:4px;font-size:12px;}
+</style>
+<div class="items-header-o">
+  <span>Description</span><span>Brand</span><span>HSN/SAC</span>
+  <span>Qty</span><span>Unit</span><span>GST%</span>
+  <span>Price (₹)</span><span>Amount</span><span></span>
+</div>""", unsafe_allow_html=True)
+    else:
+        st.markdown("""
+<style>
+.items-header-b{display:grid;
     grid-template-columns:3.5fr 1.1fr 0.6fr 1.2fr 0.85fr 0.75fr 0.35fr;
     font-weight:bold;border-bottom:1px solid #ccc;padding:6px 0;}
-.items-header span{padding:4px;}
+.items-header-b span{padding:4px;}
 </style>
-<div class="items-header">
+<div class="items-header-b">
   <span>Description</span><span>HSN/SAC</span><span>Qty</span>
   <span>Unit</span><span>Price (₹)</span><span>Amount</span><span></span>
 </div>""", unsafe_allow_html=True)
@@ -491,35 +505,63 @@ def render_items_ui(key_prefix, items_key):
     row_list  = st.session_state[items_key]
     to_delete = []
     for i, item in enumerate(row_list):
-        c1,c2,c3,c4,c5,c6,c7 = st.columns([3.5,1.1,.6,1.2,.85,.75,.35])
-        with c1: item["desc"]  = st.text_area("Desc", value=item["desc"],
-                                    key=f"{key_prefix}_d{i}",
-                                    label_visibility="collapsed",
-                                    placeholder="Description", height=68)
-        with c2: item["hsn"]   = st.text_input("HSN", value=item["hsn"],
-                                    key=f"{key_prefix}_h{i}",
-                                    label_visibility="collapsed", placeholder="HSN")
-        with c3: item["qty"]   = st.number_input("Qty", value=float(item["qty"]),
-                                    min_value=0.0, step=1.0,
-                                    key=f"{key_prefix}_q{i}",
-                                    label_visibility="collapsed", format="%.2f")
-        with c4: item["unit"]  = st.selectbox("Unit", COMMON_UNITS,
-                                    index=COMMON_UNITS.index(item["unit"])
-                                          if item["unit"] in COMMON_UNITS else 0,
-                                    key=f"{key_prefix}_u{i}",
-                                    label_visibility="collapsed")
-        with c5: item["price"] = st.number_input("Price", value=float(item["price"]),
-                                    min_value=0.0, step=10.0,
-                                    key=f"{key_prefix}_p{i}",
-                                    label_visibility="collapsed", format="%.2f")
-        with c6:
-            amt = item["qty"]*item["price"]
-            st.markdown(f"<div style='padding:8px 4px;font-weight:600;font-size:13px;"
-                        f"color:#1a1a2e;text-align:right'>₹{amt:,.2f}</div>",
-                        unsafe_allow_html=True)
-        with c7:
-            if st.button("✕", key=f"{key_prefix}_del{i}", help="Remove"):
-                to_delete.append(i)
+        if show_extra:
+            c1,c2,c3,c4,c5,c6,c7,c8,c9 = st.columns([2.8,1.0,0.9,0.6,1.0,0.6,0.7,0.65,0.35])
+            with c1: item["desc"]  = st.text_area("Desc", value=item["desc"],
+                                        key=f"{key_prefix}_d{i}", label_visibility="collapsed",
+                                        placeholder="Description", height=68)
+            with c2: item["brand"] = st.text_input("Brand", value=item.get("brand",""),
+                                        key=f"{key_prefix}_br{i}", label_visibility="collapsed",
+                                        placeholder="Brand")
+            with c3: item["hsn"]   = st.text_input("HSN", value=item["hsn"],
+                                        key=f"{key_prefix}_h{i}", label_visibility="collapsed",
+                                        placeholder="HSN")
+            with c4: item["qty"]   = st.number_input("Qty", value=float(item["qty"]),
+                                        min_value=0.0, step=1.0, key=f"{key_prefix}_q{i}",
+                                        label_visibility="collapsed", format="%.2f")
+            with c5: item["unit"]  = st.selectbox("Unit", COMMON_UNITS,
+                                        index=COMMON_UNITS.index(item["unit"])
+                                              if item["unit"] in COMMON_UNITS else 0,
+                                        key=f"{key_prefix}_u{i}", label_visibility="collapsed")
+            with c6: item["gst"]   = st.number_input("GST%", value=float(item.get("gst",18.0)),
+                                        min_value=0.0, max_value=28.0, step=0.5,
+                                        key=f"{key_prefix}_g{i}", label_visibility="collapsed",
+                                        format="%.1f")
+            with c7: item["price"] = st.number_input("Price", value=float(item["price"]),
+                                        min_value=0.0, step=10.0, key=f"{key_prefix}_p{i}",
+                                        label_visibility="collapsed", format="%.2f")
+            with c8:
+                amt = item["qty"]*item["price"]
+                st.markdown(f"<div style='padding:8px 2px;font-weight:600;font-size:12px;"
+                            f"color:#1a1a2e;text-align:right'>₹{amt:,.2f}</div>",
+                            unsafe_allow_html=True)
+            with c9:
+                if st.button("✕", key=f"{key_prefix}_del{i}", help="Remove"): to_delete.append(i)
+        else:
+            c1,c2,c3,c4,c5,c6,c7 = st.columns([3.5,1.1,.6,1.2,.85,.75,.35])
+            with c1: item["desc"]  = st.text_area("Desc", value=item["desc"],
+                                        key=f"{key_prefix}_d{i}", label_visibility="collapsed",
+                                        placeholder="Description", height=68)
+            with c2: item["hsn"]   = st.text_input("HSN", value=item["hsn"],
+                                        key=f"{key_prefix}_h{i}", label_visibility="collapsed",
+                                        placeholder="HSN")
+            with c3: item["qty"]   = st.number_input("Qty", value=float(item["qty"]),
+                                        min_value=0.0, step=1.0, key=f"{key_prefix}_q{i}",
+                                        label_visibility="collapsed", format="%.2f")
+            with c4: item["unit"]  = st.selectbox("Unit", COMMON_UNITS,
+                                        index=COMMON_UNITS.index(item["unit"])
+                                              if item["unit"] in COMMON_UNITS else 0,
+                                        key=f"{key_prefix}_u{i}", label_visibility="collapsed")
+            with c5: item["price"] = st.number_input("Price", value=float(item["price"]),
+                                        min_value=0.0, step=10.0, key=f"{key_prefix}_p{i}",
+                                        label_visibility="collapsed", format="%.2f")
+            with c6:
+                amt = item["qty"]*item["price"]
+                st.markdown(f"<div style='padding:8px 4px;font-weight:600;font-size:13px;"
+                            f"color:#1a1a2e;text-align:right'>₹{amt:,.2f}</div>",
+                            unsafe_allow_html=True)
+            with c7:
+                if st.button("✕", key=f"{key_prefix}_del{i}", help="Remove"): to_delete.append(i)
 
     for idx in reversed(to_delete):
         st.session_state[items_key].pop(idx); st.rerun()
@@ -527,13 +569,20 @@ def render_items_ui(key_prefix, items_key):
     ca, cl = st.columns(2)
     with ca:
         if st.button("＋ Add Row", key=f"{key_prefix}_add", use_container_width=True):
-            st.session_state[items_key].append(
-                {"desc":"","hsn":"","qty":1.0,"unit":"Pcs.","price":0.0}); st.rerun()
+            new_item = {"desc":"","hsn":"","qty":1.0,"unit":"Pcs.","price":0.0}
+            if show_extra: new_item["brand"]=""; new_item["gst"]=18.0
+            st.session_state[items_key].append(new_item); st.rerun()
     with cl:
         if st.button("Load Sample Data", key=f"{key_prefix}_sample", use_container_width=True):
-            st.session_state[items_key] = [
-                {"desc":d,"hsn":h,"qty":q,"unit":u,"price":p}
-                for d,h,q,u,p in SAMPLE_ITEMS]; st.rerun()
+            if show_extra:
+                st.session_state[items_key] = [
+                    {"desc":d,"hsn":h,"qty":q,"unit":u,"price":p,"brand":br,"gst":g}
+                    for d,h,q,u,p,br,g in SAMPLE_ITEMS]
+            else:
+                st.session_state[items_key] = [
+                    {"desc":d,"hsn":h,"qty":q,"unit":u,"price":p}
+                    for d,h,q,u,p,br,g in SAMPLE_ITEMS]
+            st.rerun()
 
     return [it for it in st.session_state[items_key] if it["desc"].strip()]
 
@@ -571,7 +620,6 @@ st.set_page_config(page_title="Trus India Enterprises", page_icon="🧾",
 if not st.session_state.get("authenticated", False):
     show_login_page(); st.stop()
 
-# CSS
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
@@ -585,7 +633,7 @@ section.main>div{padding-top:0!important;}
     display:flex;align-items:center;justify-content:center;
     font-size:20px;font-weight:700;color:white;flex-shrink:0;}
 .banner-title{font-size:18px;font-weight:600;}
-.banner-sub{font-size:12px;color:rgba(255,255,255,.5);margin-top:2px;}
+.banner-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;}
 .banner-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
 .banner-user{background:rgba(255,255,255,.1);color:#cbd5e1;
     padding:5px 14px;border-radius:99px;font-size:12px;font-weight:500;}
@@ -616,7 +664,6 @@ div[data-testid="stExpander"]{border:1px solid #e2e4f0!important;border-radius:1
 section[data-testid="stSidebar"]{background:#1a1a2e!important;}
 section[data-testid="stSidebar"] *{color:rgba(255,255,255,.85)!important;}
 hr{border-color:#e2e4f0;margin:16px 0;}
-/* Tab styling */
 button[data-baseweb="tab"]{font-size:14px!important;font-weight:600!important;padding:12px 28px!important;}
 div[data-baseweb="tab-list"]{background:#f0f2fa!important;border-radius:12px!important;
     padding:4px!important;margin-bottom:16px!important;}
@@ -629,28 +676,30 @@ button[data-baseweb="tab"][aria-selected="true"]{
 user_display = st.session_state.get("user_name","User")
 st.markdown(f"""
 <div class="top-banner">
-  <div class="banner-logo">S</div>
+  <div class="banner-logo">T</div>
   <div>
     <div class="banner-title">Trus India Enterprises</div>
-    <div class="banner-sub">O-529, GAUR CITY CENTRE, GREATER NOIDA (W)-201306, RGD. 454G NYAY KHAND-1, INDIRAPURAM GHAZIABAD (UP) &nbsp;·&nbsp; GSTIN: 09AMAPV9671N1Z1</div>
+    <div class="banner-sub">O-529 GAUR CITY CENTRE, GREATER NOIDA &nbsp;·&nbsp; GSTIN: 09AMAPV9671N1Z1</div>
   </div>
   <div class="banner-right">
     <span class="banner-user">👤 {user_display}</span>
   </div>
 </div>""", unsafe_allow_html=True)
 
-# Sidebar
 with st.sidebar:
     st.markdown(f"### 👤 {user_display}")
     st.markdown("---")
     st.markdown(f"""
-**{COMPANY_NAME}**  
-{COMPANY_ADDR1}
+**{COMPANY_NAME}**
+
+{COMPANY_ADDR1}  
+{COMPANY_ADDR2}  
+{COMPANY_ADDR3}
 
 ---
 **{COMPANY_GSTIN}**
 
-📞 +91 9711193903 
+📞 +91 9711193903  
 ✉ trusindia@gmail.com
 
 ---
@@ -672,8 +721,10 @@ def _init(key, val):
 
 _init("order_no",    gen_order_no())
 _init("invoice_no",  gen_invoice_no())
-_init("order_items", [{"desc":d,"hsn":h,"qty":q,"unit":u,"price":p} for d,h,q,u,p in SAMPLE_ITEMS])
-_init("bill_items",  [{"desc":d,"hsn":h,"qty":q,"unit":u,"price":p} for d,h,q,u,p in SAMPLE_ITEMS])
+_init("order_items", [{"desc":d,"hsn":h,"qty":q,"unit":u,"price":p,"brand":br,"gst":g}
+                      for d,h,q,u,p,br,g in SAMPLE_ITEMS])
+_init("bill_items",  [{"desc":d,"hsn":h,"qty":q,"unit":u,"price":p}
+                      for d,h,q,u,p,br,g in SAMPLE_ITEMS])
 _init("bank_name",   BANK_NAME)
 _init("bank_branch", BANK_BRANCH)
 _init("bank_acno",   BANK_ACCOUNT_NO)
@@ -691,25 +742,20 @@ for asset_key, path in [("qr_bytes", QR_PATH), ("sig_bytes", SIG_PATH)]:
 # ══════════════════════════════════
 tab1, tab2 = st.tabs(["📋  Sales Order / Estimation", "🧾  Tax Invoice / Bill"])
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  TAB 1 — SALES ORDER
 # ══════════════════════════════════════════════════════════════════════════════
 with tab1:
     left, right = st.columns([1.4,1], gap="large")
-
     with left:
-        # Party
         st.markdown('<div class="section-card"><div class="section-title">🏢 Party Details</div>', unsafe_allow_html=True)
-        o_party_name = st.text_input("Party Name *", placeholder="e.g. SHASHI ENTERPRISES", key="o_pname")
+        o_party_name = st.text_input("Party Name *", placeholder="e.g. ABC ENTERPRISES", key="o_pname")
         o_party_city = st.text_input("City *", placeholder="e.g. VARANASI", key="o_pcity")
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Order details
         st.markdown('<div class="section-card"><div class="section-title">📋 Order Details</div>', unsafe_allow_html=True)
         col_no, col_btn = st.columns([3,1])
-        with col_no:
-            o_order_no = st.text_input("Order Number *", value=st.session_state.order_no, key="o_ono")
+        with col_no: o_order_no = st.text_input("Order Number *", value=st.session_state.order_no, key="o_ono")
         with col_btn:
             st.write(""); st.write("")
             if st.button("↻ New", key="o_newno", use_container_width=True):
@@ -718,12 +764,10 @@ with tab1:
         o_order_date_str = o_order_date.strftime("%d-%m-%Y")
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Items
         st.markdown('<div class="section-card"><div class="section-title">📦 Line Items</div>', unsafe_allow_html=True)
         o_valid_items = render_items_ui("o", "order_items")
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Bank details
         st.markdown('<div class="section-card"><div class="section-title">🏦 Bank Details</div>', unsafe_allow_html=True)
         bc1, bc2 = st.columns(2)
         with bc1:
@@ -754,7 +798,6 @@ with tab1:
     with right:
         subtotal, cgst_amt, sgst_amt, grand_total = render_metrics(o_valid_items)
         st.markdown("<hr/>", unsafe_allow_html=True)
-
         st.markdown('<div class="section-card"><div class="section-title">📄 Order Preview</div>', unsafe_allow_html=True)
         if o_order_no and o_party_name and o_party_city:
             st.markdown(f"""
@@ -776,7 +819,9 @@ with tab1:
             with st.expander(f"📦 {len(o_valid_items)} Item(s)"):
                 for i,it in enumerate(o_valid_items,1):
                     amt=it["qty"]*it["price"]
-                    st.markdown(f"**{i}. {it['desc']}**  \n"
+                    brand = f" | Brand: {it.get('brand','')}" if it.get('brand') else ""
+                    gst   = f" | GST: {it.get('gst',18):.0f}%"
+                    st.markdown(f"**{i}. {it['desc']}**{brand}{gst}  \n"
                                 f"HSN:`{it['hsn']}` | {it['qty']} {it['unit']} × ₹{it['price']:,.2f} = **₹{amt:,.2f}**")
                     if i<len(o_valid_items): st.markdown("<hr style='margin:6px 0;border-color:#f0f2fa'>",unsafe_allow_html=True)
 
@@ -792,12 +837,9 @@ with tab1:
             pdf=build_order_pdf(
                 o_party_name.strip(), o_party_city.strip(),
                 o_order_no.strip(), o_order_date_str, o_valid_items,
-                qr_bytes=st.session_state.qr_bytes,
-                sig_bytes=st.session_state.sig_bytes,
-                bank_name=st.session_state.bank_name,
-                bank_branch=st.session_state.bank_branch,
-                bank_acno=st.session_state.bank_acno,
-                bank_ifsc=st.session_state.bank_ifsc,
+                qr_bytes=st.session_state.qr_bytes, sig_bytes=st.session_state.sig_bytes,
+                bank_name=st.session_state.bank_name, bank_branch=st.session_state.bank_branch,
+                bank_acno=st.session_state.bank_acno, bank_ifsc=st.session_state.bank_ifsc,
                 bank_holder=st.session_state.bank_holder)
             st.success(f"✅ Ready — Grand Total ₹{grand_total:,.2f}")
             st.download_button("⬇  Download Sales Order PDF", data=pdf,
@@ -811,40 +853,34 @@ with tab1:
 # ══════════════════════════════════════════════════════════════════════════════
 with tab2:
     left2, right2 = st.columns([1.4,1], gap="large")
-
     with left2:
-        # Customer details
         st.markdown('<div class="section-card"><div class="section-title">👤 Customer Details</div>', unsafe_allow_html=True)
-        b_party_name  = st.text_input("Customer Name *",  placeholder="e.g. RAMESH KUMAR",         key="b_pname")
-        b_party_city  = st.text_input("City / Address *", placeholder="e.g. VARANASI, UP",          key="b_pcity")
+        b_party_name  = st.text_input("Customer Name *",  placeholder="e.g. RAMESH KUMAR", key="b_pname")
+        b_party_city  = st.text_input("City / Address *", placeholder="e.g. VARANASI, UP", key="b_pcity")
         bc1, bc2 = st.columns(2)
         with bc1: b_party_gstin = st.text_input("Customer GSTIN", placeholder="Optional", key="b_gstin")
         with bc2: b_party_phone = st.text_input("Phone Number",   placeholder="+91 XXXXXXXXXX", key="b_phone")
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Invoice details
         st.markdown('<div class="section-card"><div class="section-title">🧾 Invoice Details</div>', unsafe_allow_html=True)
         col_inv, col_btn2 = st.columns([3,1])
-        with col_inv:
-            b_invoice_no = st.text_input("Invoice Number *", value=st.session_state.invoice_no, key="b_invno")
+        with col_inv: b_invoice_no = st.text_input("Invoice Number *", value=st.session_state.invoice_no, key="b_invno")
         with col_btn2:
             st.write(""); st.write("")
             if st.button("↻ New", key="b_newno", use_container_width=True):
                 st.session_state.invoice_no = gen_invoice_no(); st.rerun()
         ic1, ic2, ic3 = st.columns(3)
-        with ic1: b_inv_date  = st.date_input("Invoice Date *",  value=datetime.date.today(),               key="b_idate")
-        with ic2: b_due_date  = st.date_input("Due Date",        value=datetime.date.today()+datetime.timedelta(days=30), key="b_ddate")
-        with ic3: b_pay_mode  = st.selectbox("Payment Mode",     PAYMENT_MODES, key="b_paymode")
+        with ic1: b_inv_date = st.date_input("Invoice Date *", value=datetime.date.today(), key="b_idate")
+        with ic2: b_due_date = st.date_input("Due Date", value=datetime.date.today()+datetime.timedelta(days=30), key="b_ddate")
+        with ic3: b_pay_mode = st.selectbox("Payment Mode", PAYMENT_MODES, key="b_paymode")
         b_inv_date_str = b_inv_date.strftime("%d-%m-%Y")
         b_due_date_str = b_due_date.strftime("%d-%m-%Y")
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Items
         st.markdown('<div class="section-card"><div class="section-title">📦 Line Items</div>', unsafe_allow_html=True)
         b_valid_items = render_items_ui("b", "bill_items")
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Bank (shared, read-only display)
         st.markdown(f"""
         <div class="section-card">
           <div class="section-title">🏦 Bank Details</div>
@@ -856,13 +892,12 @@ with tab2:
             <div class="bank-row"><span class="bank-label">Holder</span><span class="bank-val">{st.session_state.bank_holder}</span></div>
           </div>
           <p style="font-size:11px;color:#7a7a9d;margin-top:8px">
-          ✏️ Edit bank details in the <b>Sales Order tab</b> — shared across both tabs.</p>
+          ✏️ Edit bank details in the <b>Sales Order tab</b>.</p>
         </div>""", unsafe_allow_html=True)
 
     with right2:
         subtotal2, cgst2, sgst2, grand2 = render_metrics(b_valid_items)
         st.markdown("<hr/>", unsafe_allow_html=True)
-
         st.markdown('<div class="section-card"><div class="section-title">🧾 Invoice Preview</div>', unsafe_allow_html=True)
         if b_invoice_no and b_party_name and b_party_city:
             st.markdown(f"""
@@ -874,9 +909,7 @@ with tab2:
               <tr><td style="color:#7a7a9d;padding:5px 0">Due Date</td>
                   <td style="font-weight:600;color:#1a1a2e">{b_due_date_str}</td></tr>
               <tr><td style="color:#7a7a9d;padding:5px 0">Customer</td>
-                  <td style="font-weight:600;color:#1a1a2e">{b_party_name}</td></tr>
-              <tr><td style="color:#7a7a9d;padding:5px 0">City</td>
-                  <td style="font-weight:600;color:#1a1a2e">{b_party_city}</td></tr>
+                  <td style="font-weight:600;color:#1a1a2e">{b_party_name}, {b_party_city}</td></tr>
               <tr><td style="color:#7a7a9d;padding:5px 0">Payment Mode</td>
                   <td style="font-weight:600;color:#059669">{b_pay_mode}</td></tr>
               <tr><td style="color:#7a7a9d;padding:5px 0">Items</td>
@@ -889,12 +922,10 @@ with tab2:
         if b_valid_items:
             with st.expander(f"📦 {len(b_valid_items)} Item(s) — with GST breakdown"):
                 for i,it in enumerate(b_valid_items,1):
-                    base=round(it["qty"]*it["price"],2)
-                    cgst_c=round(base*CGST_RATE/100,2)
-                    total_c=round(base+cgst_c*2,2)
+                    base=round(it["qty"]*it["price"],2); cgst_c=round(base*CGST_RATE/100,2)
                     st.markdown(f"**{i}. {it['desc']}**  \n"
                                 f"{it['qty']} {it['unit']} × ₹{it['price']:,.2f} = "
-                                f"₹{base:,.2f} + GST ₹{cgst_c*2:,.2f} = **₹{total_c:,.2f}**")
+                                f"₹{base:,.2f} + GST ₹{cgst_c*2:,.2f} = **₹{round(base+cgst_c*2,2):,.2f}**")
                     if i<len(b_valid_items): st.markdown("<hr style='margin:6px 0;border-color:#f0f2fa'>",unsafe_allow_html=True)
 
         st.markdown("<hr/>", unsafe_allow_html=True)
@@ -911,12 +942,9 @@ with tab2:
                 b_party_gstin.strip(), b_party_phone.strip(),
                 b_invoice_no.strip(), b_inv_date_str, b_due_date_str,
                 b_pay_mode, b_valid_items,
-                qr_bytes=st.session_state.qr_bytes,
-                sig_bytes=st.session_state.sig_bytes,
-                bank_name=st.session_state.bank_name,
-                bank_branch=st.session_state.bank_branch,
-                bank_acno=st.session_state.bank_acno,
-                bank_ifsc=st.session_state.bank_ifsc,
+                qr_bytes=st.session_state.qr_bytes, sig_bytes=st.session_state.sig_bytes,
+                bank_name=st.session_state.bank_name, bank_branch=st.session_state.bank_branch,
+                bank_acno=st.session_state.bank_acno, bank_ifsc=st.session_state.bank_ifsc,
                 bank_holder=st.session_state.bank_holder)
             st.success(f"✅ Ready — Grand Total ₹{grand2:,.2f}")
             st.download_button("⬇  Download Tax Invoice PDF", data=pdf2,
