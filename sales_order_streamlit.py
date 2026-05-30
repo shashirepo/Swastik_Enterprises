@@ -635,7 +635,7 @@ with left:
             st.markdown(f"<div style='padding:8px 2px;font-weight:600;font-size:12px;color:#1a1a2e;text-align:right'>&#8377;{amt:,.2f}</div>", unsafe_allow_html=True)
         with c9:
             if st.button("✕", key=f"del{i}", help="Remove row"):
-                to_delete.append(i)'''
+                to_delete.append(i)
 
     for idx in reversed(to_delete):
         st.session_state.order_items.pop(idx); st.rerun()
