@@ -270,15 +270,24 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
     rows.append(["","","","","","","","", f"{subtotal:,.2f}"])
 
     # One CGST row + one SGST row per GST rate group
+    # Compact GST rows (no extra height)
     for rate in sorted(gst_groups.keys()):
         g    = gst_groups[rate]
         half = rate / 2
-        rows.append(["","","","","",
-                     Paragraph(f"CGST @ {half:.1f}%", wrap_s),
-                     "","", f"{g['cgst']:,.2f}"])
-        rows.append(["","","","","",
-                     Paragraph(f"SGST @ {half:.1f}%", wrap_s),
-                     "","", f"{g['sgst']:,.2f}"])
+    
+        rows.append([
+            "", "", "", "", "",
+            Paragraph(f"CGST @ {half:.1f}%", wrap_r),
+            "", "",
+            Paragraph(f"{g['cgst']:,.2f}", wrap_r)
+        ])
+    
+        rows.append([
+            "", "", "", "", "",
+            Paragraph(f"SGST @ {half:.1f}%", wrap_r),
+            "", "",
+            Paragraph(f"{g['sgst']:,.2f}", wrap_r)
+        ])
 
     # Round off
     round_off = round(round(grand) - grand, 2)
@@ -293,7 +302,7 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
                  Paragraph("<b>Grand Total</b>", wrap_s),
                  "","",
                  f"{int(total_qty)} Units",
-                 "","","`",
+                 "","","",
                  Paragraph(f"<b>{grand_rounded:,.2f}</b>", wrap_r)])
 
     n = len(rows)
