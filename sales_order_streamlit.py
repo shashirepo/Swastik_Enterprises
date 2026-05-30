@@ -298,10 +298,10 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
                 "total_tax": 0.0
             }
 
-    gst_summary[gst]["taxable"] += amt
-    gst_summary[gst]["cgst"] += amt * (gst / 2) / 100
-    gst_summary[gst]["sgst"] += amt * (gst / 2) / 100
-    gst_summary[gst]["total_tax"] += amt * gst / 100
+        gst_summary[gst]["taxable"] += amt
+        gst_summary[gst]["cgst"] += amt * (gst / 2) / 100
+        gst_summary[gst]["sgst"] += amt * (gst / 2) / 100
+        gst_summary[gst]["total_tax"] += amt * gst / 100
 
 
     rows += [
