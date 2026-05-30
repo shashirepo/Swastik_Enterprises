@@ -286,17 +286,17 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
     tax     = round(cgst + sgst, 2)
     grand   = round(subtotal + tax, 2)
     gst_summary = {}
-                  for it in items:
-    gst = float(it.get("gst", 18.0))
-    amt = it["qty"] * it["price"]
-
-    if gst not in gst_summary:
-        gst_summary[gst] = {
-            "taxable": 0.0,
-            "cgst": 0.0,
-            "sgst": 0.0,
-            "total_tax": 0.0
-        }
+    for it in items:
+        gst = float(it.get("gst", 18.0))
+        amt = it["qty"] * it["price"]
+        
+        if gst not in gst_summary:
+            gst_summary[gst] = {
+                "taxable": 0.0,
+                "cgst": 0.0,
+                "sgst": 0.0,
+                "total_tax": 0.0
+            }
 
     gst_summary[gst]["taxable"] += amt
     gst_summary[gst]["cgst"] += amt * (gst / 2) / 100
