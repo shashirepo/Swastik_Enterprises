@@ -312,7 +312,7 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
         ("RIGHTPADDING",  (0,0),   (-1,-1),  2),
         ("TOPPADDING",    (0,0),   (-1,-1),  2),
         ("BOTTOMPADDING", (0,0),   (-1,-1),  2),
-        ("SPAN", (1, n-1), (4, n-1),
+        ("SPAN", (1, n-1), (4, n-1)),
     ]))
     story += [it_t, Spacer(1,2*mm)]
 
