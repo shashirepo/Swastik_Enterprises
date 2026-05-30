@@ -285,8 +285,24 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
     sgst    = cgst
     tax     = round(cgst + sgst, 2)
     grand   = round(subtotal + tax, 2)
-    avg_gst = round(sum(it["qty"]*it["price"]*float(it.get("gst",18.0)) for it in items)
-                    / max(subtotal, 1), 1) if items else 18.0
+    gst_summary = {}
+                  for it in items:
+    gst = float(it.get("gst", 18.0))
+    amt = it["qty"] * it["price"]
+
+    if gst not in gst_summary:
+        gst_summary[gst] = {
+            "taxable": 0.0,
+            "cgst": 0.0,
+            "sgst": 0.0,
+            "total_tax": 0.0
+        }
+
+    gst_summary[gst]["taxable"] += amt
+    gst_summary[gst]["cgst"] += amt * (gst / 2) / 100
+    gst_summary[gst]["sgst"] += amt * (gst / 2) / 100
+    gst_summary[gst]["total_tax"] += amt * gst / 100
+
 
     rows += [
         ["","","","","","","","",f"{subtotal:,.2f}"],
@@ -318,9 +334,17 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
 
     # ── Tax summary ──────────────────────────────────────────────────────────
     tax_rows = [
-        ["Tax Rate","Taxable Amt.","CGST Amt.","SGST Amt.","Total Tax"],
-        [f"{avg_gst:.1f}%", f"{subtotal:,.2f}", f"{cgst:,.2f}", f"{sgst:,.2f}", f"{tax:,.2f}"],
-    ]
+    ["Tax Rate", "Taxable Amt.", "CGST Amt.", "SGST Amt.", "Total Tax"]
+]
+
+for gst, data in sorted(gst_summary.items()):
+    tax_rows.append([
+        f"{gst:.0f}%",
+        f"{data['taxable']:,.2f}",
+        f"{data['cgst']:,.2f}",
+        f"{data['sgst']:,.2f}",
+        f"{data['total_tax']:,.2f}"
+    ])
     tt = Table(tax_rows, colWidths=[W*.12,W*.22,W*.22,W*.22,W*.22])
     tt.setStyle(TableStyle([
         ("FONTNAME",  (0,0),(-1,0),"Helvetica-Bold"),
