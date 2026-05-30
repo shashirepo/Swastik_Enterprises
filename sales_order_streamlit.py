@@ -333,7 +333,8 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
     story += [it_t, Spacer(1,2*mm)]
 
     # ── Tax summary ──────────────────────────────────────────────────────────
-    tax_rows = [
+  
+tax_rows = [
     ["Tax Rate", "Taxable Amt.", "CGST Amt.", "SGST Amt.", "Total Tax"]
 ]
 
@@ -345,17 +346,22 @@ for gst, data in sorted(gst_summary.items()):
         f"{data['sgst']:,.2f}",
         f"{data['total_tax']:,.2f}"
     ])
-    tt = Table(tax_rows, colWidths=[W*.12,W*.22,W*.22,W*.22,W*.22])
-    tt.setStyle(TableStyle([
-        ("FONTNAME",  (0,0),(-1,0),"Helvetica-Bold"),
-        ("FONTSIZE",  (0,0),(-1,-1),7.5),
-        ("ALIGN",     (0,0),(-1,-1),"CENTER"),
-        ("VALIGN",    (0,0),(-1,-1),"MIDDLE"),
-        ("LINEBELOW", (0,0),(-1,0), .5,colors.black),
-    ]))
-    story += [tt, Spacer(1,2*mm),
-              Paragraph(f"<i>{num_to_words(grand)}</i>", lft_s),
-              Spacer(1,3*mm)]
+
+tt = Table(tax_rows, colWidths=[W*.12,W*.22,W*.22,W*.22,W*.22])
+tt.setStyle(TableStyle([
+    ("FONTNAME",  (0,0),(-1,0),"Helvetica-Bold"),
+    ("FONTSIZE",  (0,0),(-1,-1),7.5),
+    ("ALIGN",     (0,0),(-1,-1),"CENTER"),
+    ("VALIGN",    (0,0),(-1,-1),"MIDDLE"),
+    ("LINEBELOW", (0,0),(-1,0), .5,colors.black),
+]))
+
+story += [
+    tt,
+    Spacer(1,2*mm),
+    Paragraph(f"<i>{num_to_words(grand)}</i>", lft_s),
+    Spacer(1,3*mm)
+]
 
     # ════════════════════════════════════════════════════════════════════════
     #  BANK DETAILS + TERMS + SIGNATURE — exactly like the image
