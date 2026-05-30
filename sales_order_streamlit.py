@@ -333,36 +333,43 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
     story += [it_t, Spacer(1,2*mm)]
 
     # ── Tax summary ──────────────────────────────────────────────────────────
-  
-    tax_rows = [
-        ["Tax Rate", "Taxable Amt.", "CGST Amt.", "SGST Amt.", "Total Tax"]
-    ]
+      gst_lines = []
+
+    total_cgst = 0.0
+    total_sgst = 0.0
     
     for gst, data in sorted(gst_summary.items()):
-        tax_rows.append([
-            f"{gst:.0f}%",
-            f"{data['taxable']:,.2f}",
-            f"{data['cgst']:,.2f}",
-            f"{data['sgst']:,.2f}",
-            f"{data['total_tax']:,.2f}"
-        ])
+        rate_half = gst / 2
     
-    tt = Table(tax_rows, colWidths=[W*.12,W*.22,W*.22,W*.22,W*.22])
-    tt.setStyle(TableStyle([
-        ("FONTNAME",  (0,0),(-1,0),"Helvetica-Bold"),
-        ("FONTSIZE",  (0,0),(-1,-1),7.5),
-        ("ALIGN",     (0,0),(-1,-1),"CENTER"),
-        ("VALIGN",    (0,0),(-1,-1),"MIDDLE"),
-        ("LINEBELOW", (0,0),(-1,0), .5,colors.black),
+        cgst_amt = round(data["cgst"], 2)
+        sgst_amt = round(data["sgst"], 2)
+    
+        total_cgst += cgst_amt
+        total_sgst += sgst_amt
+    
+        gst_lines.append([f"Add : CGST @ {rate_half:.1f}%", f"{cgst_amt:,.2f}"])
+        gst_lines.append([f"Add : SGST @ {rate_half:.1f}%", f"{sgst_amt:,.2f}"])
+    
+    # Round off (optional like sample)
+    round_off = round(grand) - grand
+    final_total = round(grand)
+    
+    gst_lines.append(["Round Off", f"{round_off:,.2f}"])
+    gst_lines.append(["Total", f"{final_total:,.2f}"])
+    
+    gst_table = Table(gst_lines, colWidths=[W*0.7, W*0.3])
+    gst_table.setStyle(TableStyle([
+        ("FONTNAME", (0,0),(-1,-1), "Helvetica"),
+        ("FONTSIZE", (0,0),(-1,-1), 8),
+        ("ALIGN", (1,0),(-1,-1), "RIGHT"),
     ]))
     
     story += [
-        tt,
-        Spacer(1,2*mm),
-        Paragraph(f"<i>{num_to_words(grand)}</i>", lft_s),
-        Spacer(1,3*mm)
+        gst_table,
+        Spacer(1, 2*mm),
+        Paragraph(f"<i>{num_to_words(final_total)}</i>", lft_s),
+        Spacer(1, 3*mm)
     ]
-
     # ════════════════════════════════════════════════════════════════════════
     #  BANK DETAILS + TERMS + SIGNATURE — exactly like the image
     #  Layout:
