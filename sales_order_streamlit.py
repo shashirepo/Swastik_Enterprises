@@ -647,7 +647,7 @@ with left:
             st.rerun()
     with cl:
         if st.button("Load Sample Data", use_container_width=True):
-            st.session_state.order_items = ["desc":d,"hsn":h,"qty":q,"unit":u,"price":p,"brand":br,"gst":g}
+            st.session_state.order_items = [{"desc":d,"hsn":h,"qty":q,"unit":u,"price":p,"brand":br,"gst":g}
             for d,h,q,u,p,br,g in SAMPLE_ITEMS
             ]
             st.rerun()'
