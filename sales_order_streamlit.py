@@ -333,7 +333,7 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
     story += [it_t, Spacer(1,2*mm)]
 
     # ── Tax summary ──────────────────────────────────────────────────────────
-      gst_lines = []
+    gst_lines = []
 
     total_cgst = 0.0
     total_sgst = 0.0
