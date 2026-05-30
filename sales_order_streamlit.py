@@ -650,7 +650,7 @@ with left:
             st.session_state.order_items = [{"desc":d,"hsn":h,"qty":q,"unit":u,"price":p,"brand":br,"gst":g}
             for d,h,q,u,p,br,g in SAMPLE_ITEMS
             ]
-            st.rerun()'
+            st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Bank Details section ──────────────────────────────────────────────────
