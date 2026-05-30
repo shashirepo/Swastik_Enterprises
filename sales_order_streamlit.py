@@ -300,8 +300,8 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
     avg_gst = round(sum(it["qty"]*it["price"]*float(it.get("gst",18.0)) for it in items)
                     / max(subtotal, 1), 1) if items else 18.0
 
-   rows += [
-        ["","","","","","","","",          f"{subtotal:,.2f}"],
+    rows += [
+        ["","","","","","","","",f"{subtotal:,.2f}"],
         ["","","","","","Add : CGST","","",f"{cgst:,.2f}"],
         ["","","","","","Add : SGST","","",f"{sgst:,.2f}"],
         ["","Grand Total","","",f"{int(total_qty)} Units","","","`",f"{grand:,.2f}"],
