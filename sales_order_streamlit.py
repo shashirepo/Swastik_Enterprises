@@ -554,7 +554,7 @@ if "bank_ifsc"   not in st.session_state: st.session_state.bank_ifsc   = BANK_IF
 if "bank_holder" not in st.session_state: st.session_state.bank_holder = BANK_HOLDER
 
 # ── Layout ────────────────────────────────────────────────────────────────────
-left, right = st.columns([1.4, 1], gap="large")
+left, right = st.columns([2, 1], gap="large")
 
 # ════════════════════════════════════════
 #  LEFT panel
