@@ -293,7 +293,7 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
             Paragraph(f"{amt:,.2f}",         wrap_r),
         ])
 
-   cgst    = round(sum(it["qty"]*it["price"]*float(it.get("gst",18.0))/2/100 for it in items), 2)
+    cgst    = round(sum(it["qty"]*it["price"]*float(it.get("gst",18.0))/2/100 for it in items), 2)
     sgst    = cgst
     tax     = round(cgst + sgst, 2)
     grand   = round(subtotal + tax, 2)
