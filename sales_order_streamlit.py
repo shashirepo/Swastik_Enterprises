@@ -277,14 +277,14 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
     
         rows.append([
             "", "", "", "", "",
-            Paragraph(f"CGST @ {half:.1f}%", wrap_r),
+            Paragraph(f"CGST@{half:.1f}%", wrap_r),
             "", "",
             Paragraph(f"{g['cgst']:,.2f}", wrap_r)
         ])
     
         rows.append([
             "", "", "", "", "",
-            Paragraph(f"SGST @ {half:.1f}%", wrap_r),
+            Paragraph(f"SGST@{half:.1f}%", wrap_r),
             "", "",
             Paragraph(f"{g['sgst']:,.2f}", wrap_r)
         ])
