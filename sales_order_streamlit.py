@@ -259,13 +259,15 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
     hdr = [
         Paragraph("S.N.",                hdr_s),
         Paragraph("Description of Goods",hdr_ls),
+        Paragraph("Brand",               hdr_s),
         Paragraph("HSN/SAC<br/>Code",    hdr_s),
         Paragraph("Qty.",                hdr_s),
         Paragraph("Unit",                hdr_s),
+        Paragraph("GST%",               hdr_s),
         Paragraph("Price",               hdr_s),
         Paragraph("Amount(`)",           hdr_s),
     ]
-    cw  = [W*.05, W*.37, W*.10, W*.07, W*.07, W*.12, W*.12]
+    cw = [W*.04, W*.27, W*.09, W*.09, W*.06, W*.06, W*.06, W*.11, W*.12]    
     rows = [hdr]
     subtotal = total_qty = 0.0
 
@@ -275,28 +277,34 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
     wrap_r  = ps("WR", fontSize=7.5, alignment=TA_RIGHT,  leading=10, wordWrap='LTR')
 
     for i, it in enumerate(items, 1):
-        amt = round(it["qty"]*it["price"], 2)
-        subtotal  += amt; total_qty += it["qty"]
+        item_gst = float(it.get("gst", 18.0))
+        amt = round(it["qty"] * it["price"], 2)
+        subtotal  += amt
+        total_qty += it["qty"]
         rows.append([
-            Paragraph(str(i),              wrap_c),
-            Paragraph(it["desc"],          wrap_s),   # ← wraps long description
-            Paragraph(it["hsn"],           wrap_c),
-            Paragraph(f"{it['qty']:.2f}",  wrap_c),
-            Paragraph(it["unit"],          wrap_c),
+            Paragraph(str(i),                wrap_c),
+            Paragraph(it["desc"],            wrap_s),
+            Paragraph(it.get("brand",""),    wrap_c),
+            Paragraph(it["hsn"],             wrap_c),
+            Paragraph(f"{it['qty']:.2f}",    wrap_c),
+            Paragraph(it["unit"],            wrap_c),
+            Paragraph(f"{item_gst:.0f}%",    wrap_c),
             Paragraph(f"{it['price']:,.2f}", wrap_r),
-            Paragraph(f"{amt:,.2f}",       wrap_r),
+            Paragraph(f"{amt:,.2f}",         wrap_r),
         ])
 
-    cgst  = round(subtotal*CGST_RATE/100, 2)
-    sgst  = round(subtotal*SGST_RATE/100, 2)
-    tax   = round(cgst+sgst, 2)
-    grand = round(subtotal+tax, 2)
+   cgst    = round(sum(it["qty"]*it["price"]*float(it.get("gst",18.0))/2/100 for it in items), 2)
+    sgst    = cgst
+    tax     = round(cgst + sgst, 2)
+    grand   = round(subtotal + tax, 2)
+    avg_gst = round(sum(it["qty"]*it["price"]*float(it.get("gst",18.0)) for it in items)
+                    / max(subtotal, 1), 1) if items else 18.0
 
-    rows += [
-        ["","","","","","",              f"{subtotal:,.2f}"],
-        ["","","","","Add : CGST", f"@ {CGST_RATE:.2f} %", f"{cgst:,.2f}"],
-        ["","","","","Add : SGST", f"@ {SGST_RATE:.2f} %", f"{sgst:,.2f}"],
-        ["","Grand Total","", f"{int(total_qty)} Units","","`", f"{grand:,.2f}"],
+   rows += [
+        ["","","","","","","","",          f"{subtotal:,.2f}"],
+        ["","","","","","Add : CGST","","",f"{cgst:,.2f}"],
+        ["","","","","","Add : SGST","","",f"{sgst:,.2f}"],
+        ["","Grand Total","","",f"{int(total_qty)} Units","","","`",f"{grand:,.2f}"],
     ]
     n = len(rows)
 
@@ -316,14 +324,14 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
         ("RIGHTPADDING",  (0,0),   (-1,-1),  2),
         ("TOPPADDING",    (0,0),   (-1,-1),  2),
         ("BOTTOMPADDING", (0,0),   (-1,-1),  2),
-        ("SPAN",          (1,n-1), (3,n-1)),
+        ("SPAN", (1, n-1), (3, n-1)),', '("SPAN", (1, n-1), (4, n-1)),
     ]))
     story += [it_t, Spacer(1,2*mm)]
 
     # ── Tax summary ──────────────────────────────────────────────────────────
     tax_rows = [
         ["Tax Rate","Taxable Amt.","CGST Amt.","SGST Amt.","Total Tax"],
-        ["18%", f"{subtotal:,.2f}", f"{cgst:,.2f}", f"{sgst:,.2f}", f"{tax:,.2f}"],
+        [f"{avg_gst:.1f}%", f"{subtotal:,.2f}", f"{cgst:,.2f}", f"{sgst:,.2f}", f"{tax:,.2f}"],
     ]
     tt = Table(tax_rows, colWidths=[W*.12,W*.22,W*.22,W*.22,W*.22])
     tt.setStyle(TableStyle([
@@ -533,7 +541,9 @@ CGST: {CGST_RATE}% &nbsp; SGST: {SGST_RATE}%
 if "order_no"    not in st.session_state: st.session_state.order_no = gen_order_no()
 if "order_items" not in st.session_state:
     st.session_state.order_items = [
-        {"desc":d,"hsn":h,"qty":q,"unit":u,"price":p} for d,h,q,u,p in SAMPLE_ITEMS]
+        {"desc":d,"hsn":h,"qty":q,"unit":u,"price":p,"brand":br,"gst":g}
+        for d,h,q,u,p,br,g in SAMPLE_ITEMS
+    ]
 if "qr_bytes" not in st.session_state:
     try:
         with open(QR_PATH, "rb") as _f:
@@ -584,29 +594,48 @@ with left:
     st.markdown('<div class="section-card"><div class="section-title">📦 Line Items</div>', unsafe_allow_html=True)
     st.markdown("""
 <style>
-.items-header{display:grid;grid-template-columns:3.5fr 1.1fr 0.6fr 1.2fr 0.85fr 0.75fr 0.35fr;
-    font-weight:bold;border-bottom:1px solid #ccc;padding:6px 0;}
-.items-header span{padding:4px;}
+.items-header{display:grid;grid-template-columns:2.8fr 1.0fr 0.9fr 0.6fr 1.0fr 0.6fr 0.7fr 0.65fr 0.35fr;
+    background: #1a1a2e;border-radius: 8px;padding: 10px 12px;
+    margin-bottom: 6px;
+    }
+    .items-header span {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255,255,255,.7);
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    }
 </style>
 <div class="items-header">
-  <span>Description</span><span>HSN/SAC</span><span>Qty</span>
-  <span>Unit</span><span>Price (₹)</span><span>Amount</span><span></span>
+  <span>Description</span>
+  <span>Brand</span>
+  <span>HSN/SAC</span>
+  <span>Qty</span>
+  <span>Unit</span>
+  <span>GST%</span>
+  <span>Price (&#8377;)</span>
+  <span>Amount</span>
+  <span></span>
 </div>""", unsafe_allow_html=True)
 
-    row_list  = st.session_state.order_items
+    items = st.session_state.order_items
     to_delete = []
-    for i, item in enumerate(row_list):
-        c1,c2,c3,c4,c5,c6,c7 = st.columns([3.5,1.1,.6,1.2,.85,.75,.35])
-        with c1: item["desc"]  = st.text_area("Desc", value=item["desc"], key=f"d{i}", label_visibility="collapsed", placeholder="Description", height=68)
-        with c2: item["hsn"]   = st.text_input("HSN",  value=item["hsn"],  key=f"h{i}", label_visibility="collapsed", placeholder="HSN")
-        with c3: item["qty"]   = st.number_input("Qty", value=float(item["qty"]), min_value=0.0, step=1.0, key=f"q{i}", label_visibility="collapsed", format="%.2f")
-        with c4: item["unit"]  = st.selectbox("Unit", COMMON_UNITS, index=COMMON_UNITS.index(item["unit"]) if item["unit"] in COMMON_UNITS else 0, key=f"u{i}", label_visibility="collapsed")
-        with c5: item["price"] = st.number_input("Price", value=float(item["price"]), min_value=0.0, step=10.0, key=f"p{i}", label_visibility="collapsed", format="%.2f")
-        with c6:
+
+    for i, item in enumerate(items):
+        c1,c2,c3,c4,c5,c6,c7,c8,c9 = st.columns([2.8,1.0,0.9,0.6,1.0,0.6,0.7,0.65,0.35])
+        with c1: item["desc"]  = st.text_area("Desc",  value=item["desc"],          key=f"d{i}",  label_visibility="collapsed", placeholder="Description", height=68)
+        with c2: item["brand"] = st.text_input("Brand", value=item.get("brand",""), key=f"br{i}", label_visibility="collapsed", placeholder="Brand")
+        with c3: item["hsn"]   = st.text_input("HSN",   value=item["hsn"],          key=f"h{i}",  label_visibility="collapsed", placeholder="HSN")
+        with c4: item["qty"]   = st.number_input("Qty",  value=float(item["qty"]),  min_value=0.0, step=1.0,  key=f"q{i}", label_visibility="collapsed", format="%.2f")
+        with c5: item["unit"]  = st.selectbox("Unit", COMMON_UNITS, index=COMMON_UNITS.index(item["unit"]) if item["unit"] in COMMON_UNITS else 0, key=f"u{i}", label_visibility="collapsed")
+        with c6: item["gst"]   = st.number_input("GST%", value=float(item.get("gst",18.0)), min_value=0.0, max_value=28.0, step=0.5, key=f"g{i}", label_visibility="collapsed", format="%.1f")
+        with c7: item["price"] = st.number_input("Price", value=float(item["price"]), min_value=0.0, step=10.0, key=f"p{i}", label_visibility="collapsed", format="%.2f")
+        with c8:
             amt = item["qty"]*item["price"]
-            st.markdown(f"<div style='padding:8px 4px;font-weight:600;font-size:13px;color:#1a1a2e;text-align:right'>₹{amt:,.2f}</div>", unsafe_allow_html=True)
-        with c7:
-            if st.button("✕", key=f"del{i}", help="Remove"): to_delete.append(i)
+            st.markdown(f"<div style='padding:8px 2px;font-weight:600;font-size:12px;color:#1a1a2e;text-align:right'>&#8377;{amt:,.2f}</div>", unsafe_allow_html=True)
+        with c9:
+            if st.button("✕", key=f"del{i}", help="Remove row"):
+                to_delete.append(i)'''
 
     for idx in reversed(to_delete):
         st.session_state.order_items.pop(idx); st.rerun()
@@ -614,10 +643,14 @@ with left:
     ca, cl = st.columns(2)
     with ca:
         if st.button("＋ Add Row", use_container_width=True):
-            st.session_state.order_items.append({"desc":"","hsn":"","qty":1.0,"unit":"Pcs.","price":0.0}); st.rerun()
+            st.session_state.order_items.append({"desc":"","hsn":"","qty":1.0,"unit":"Pcs.","price":0.0,"brand":"","gst":18.0})
+            st.rerun()
     with cl:
         if st.button("Load Sample Data", use_container_width=True):
-            st.session_state.order_items = [{"desc":d,"hsn":h,"qty":q,"unit":u,"price":p} for d,h,q,u,p in SAMPLE_ITEMS]; st.rerun()
+            st.session_state.order_items = ["desc":d,"hsn":h,"qty":q,"unit":u,"price":p,"brand":br,"gst":g}
+            for d,h,q,u,p,br,g in SAMPLE_ITEMS
+            ]
+            st.rerun()'
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Bank Details section ──────────────────────────────────────────────────
