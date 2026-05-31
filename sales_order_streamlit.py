@@ -607,7 +607,7 @@ with left:
     to_delete = []
 
     for i, item in enumerate(row_list):
-        c1,c2,c3,c4,c5,c6,c7,c8,c9 = st.columns([2.6,0.9,0.85,0.55,0.95,0.7,0.65,0.6,0.35])
+        c1,c2,c3,c4,c5,c6,c7,c8,c9 = st.columns([2.6,0.9,0.85,0.55,0.70,0.7,0.65,0.6,0.35])
         with c1: item["desc"]  = st.text_area("Desc",  value=item["desc"],
                                     key=f"d{i}", label_visibility="collapsed",
                                     placeholder="Description", height=68)
