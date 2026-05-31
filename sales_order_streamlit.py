@@ -32,21 +32,17 @@ LOGO_PATH = "logo2.jpeg"
 QR_PATH   = "qr_code.jpeg"
 SIG_PATH  = "sign.jpg"
 
-# Available GST rates (matching GRS Solar style: 5% and 18% are most common)
-GST_OPTIONS   = [0.0, 5.0, 12.0, 18.0, 28.0]
-COMMON_UNITS  = ["Pcs.", "MTR", "KG", "Set", "Pair", "Bag", "Box", "Roll", "Ltr", "Nos.", "Mtr"]
+GST_OPTIONS  = [0.0, 5.0, 12.0, 18.0, 28.0]
+COMMON_UNITS = ["Pcs.", "MTR", "KG", "Set", "Pair", "Bag", "Box", "Roll", "Ltr", "Nos.", "Mtr"]
 
 SAMPLE_ITEMS = [
-    ("SOLAR PANEL 650WP BIFACIAL",                   "85414300", 6.0,  "Pcs.", 20000.00, "NDCR",    5.0),
-    ("INVERTER 10KW ON GRID",                        "85044010", 1.0,  "Pcs.", 44500.00, "MICROTEK", 18.0),
-    ("SOLAR STRUCTURE (MEDIUM 3FT X 5FT)",           "73089030", 1.0,  "Set",  13500.00, "GENERIC",  18.0),
-    ("ANCHOR FASTENER M10",                          "73181500", 20.0, "Pcs.",    15.00, "GENERIC",  18.0),
-    ("CHEMICAL BAG 15KG",                            "25081010", 1.0,  "Bag",    175.00, "GENERIC",  18.0),
-    ("ACDB 1IN 1OUT",                                "85371000", 1.0,  "Pcs.",  1550.00, "GENERIC",  18.0),
-    ("DCDB BOX",                                     "85371000", 1.0,  "Pcs.",  1550.00, "GENERIC",  18.0),
-    ("MC4 CONNECTOR PAIR",                           "85366990", 25.0, "Pcs.",    30.00, "GENERIC",  18.0),
-    ("4MM DC CABLE BLACK/RED",                       "85441990", 50.0, "MTR",     40.00, "POLYCAB",  18.0),
-    ("SERVICE CHARGE",                               "9954",     1.0,  "Nos.",  3308.67, "",          18.0),
+    ("ADANI SOLAR PANEL 620 WATT N-TYPE TOPCON", "85414300",  5.0,  "Pcs.", 22000.00, "ADANI",   5.0),
+    ("DEYE INVERTER 3.3 KW ON GRID",             "85044010",  1.0,  "Pcs.", 19500.00, "DEYE",   18.0),
+    ("SOLAR STRUCTURE (MEDIUM 4FT X 6FT)",        "73089030",  1.0,  "Set",  13000.00, "GENERIC",18.0),
+    ("POLYCAB WIRE",                              "73181500",200.0,  "MTR",     80.00, "POLYCAB",18.0),
+    ("ACDB & DCDB BOX",                           "25081010",  1.0,  "Set",   4050.00, "GENERIC",18.0),
+    ("TRANSPORT & INSTALLATION CHARGE",           "867978",    1.0,  "Set",   8000.00, "",        0.0),
+    ("ELECTRIC INHANCEMENT CHARGE 2KW TO 3KW",   "867979",    1.0,  "Nos.",  1350.00, "",       18.0),
 ]
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -142,9 +138,8 @@ def img_to_rl(img_bytes, w_mm, h_mm):
 
 def calc_gst_groups(items):
     """
-    Returns dict: { gst_rate_float: {"taxable": x, "cgst": y, "sgst": z} }
-    Groups items by their GST rate and sums up.
-    Mirrors GRS Solar PDF: each GST rate gets its own row in tax summary.
+    Groups items by GST rate. Skips 0% rate items from tax calculation.
+    Returns dict: { rate: {taxable, cgst, sgst} } — only non-zero rates.
     """
     groups = {}
     for it in items:
@@ -157,18 +152,24 @@ def calc_gst_groups(items):
         groups[rate]["taxable"] += amt
         groups[rate]["cgst"]    += cgst
         groups[rate]["sgst"]    += sgst
-    # round final values
     for r in groups:
         groups[r]["taxable"] = round(groups[r]["taxable"], 2)
         groups[r]["cgst"]    = round(groups[r]["cgst"],    2)
         groups[r]["sgst"]    = round(groups[r]["sgst"],    2)
     return groups
 
+def calc_gst_groups_nonzero(items):
+    """Same as calc_gst_groups but excludes 0% rate from tax totals."""
+    all_groups    = calc_gst_groups(items)
+    nonzero_groups = {r: g for r, g in all_groups.items() if r > 0}
+    return all_groups, nonzero_groups   # both returned for display purposes
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  PDF BUILDER
 # ══════════════════════════════════════════════════════════════════════════════
 def build_pdf(party_name, party_city, order_no, order_date, items,
               qr_bytes=None, sig_bytes=None) -> bytes:
+
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
                             leftMargin=15*mm, rightMargin=15*mm,
@@ -178,19 +179,20 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
 
     def ps(name, **kw): return ParagraphStyle(name, parent=base["Normal"], **kw)
 
-    title_s = ps("T",   fontSize=14, fontName="Helvetica-Bold", alignment=TA_CENTER, spaceAfter=4)
-    ctr_s   = ps("C",   fontSize=8,  alignment=TA_CENTER, leading=11)
-    lft_s   = ps("L",   fontSize=8,  alignment=TA_LEFT,   leading=11)
-    sml_s   = ps("S",   fontSize=7,  alignment=TA_LEFT,   leading=10)
-    sml_b   = ps("SB",  fontSize=7,  fontName="Helvetica-Bold", alignment=TA_LEFT,   leading=10)
-    rgt_s   = ps("R",   fontSize=8,  alignment=TA_RIGHT,  leading=11)
-    bold_c  = ps("BC",  fontSize=8,  fontName="Helvetica-Bold", alignment=TA_CENTER)
-    hdr_s   = ps("H",   fontSize=7.5,fontName="Helvetica-Bold", alignment=TA_CENTER, leading=10)
-    hdr_ls  = ps("HL",  fontSize=7.5,fontName="Helvetica-Bold", alignment=TA_LEFT,   leading=10)
-    wrap_s  = ps("WS",  fontSize=7.5,alignment=TA_LEFT,   leading=10, wordWrap="LTR")
-    wrap_c  = ps("WC",  fontSize=7.5,alignment=TA_CENTER, leading=10, wordWrap="LTR")
-    wrap_r  = ps("WR",  fontSize=7.5,alignment=TA_RIGHT,  leading=10, wordWrap="LTR")
-    italic_s= ps("IT",  fontSize=8,  alignment=TA_LEFT,   leading=11)
+    title_s = ps("T",  fontSize=14, fontName="Helvetica-Bold", alignment=TA_CENTER, spaceAfter=4)
+    ctr_s   = ps("C",  fontSize=8,  alignment=TA_CENTER, leading=11)
+    lft_s   = ps("L",  fontSize=8,  alignment=TA_LEFT,   leading=11)
+    sml_s   = ps("S",  fontSize=7,  alignment=TA_LEFT,   leading=10)
+    sml_b   = ps("SB", fontSize=7,  fontName="Helvetica-Bold", alignment=TA_LEFT, leading=10)
+    bold_c  = ps("BC", fontSize=8,  fontName="Helvetica-Bold", alignment=TA_CENTER)
+    hdr_s   = ps("H",  fontSize=7.5,fontName="Helvetica-Bold", alignment=TA_CENTER, leading=10)
+    hdr_ls  = ps("HL", fontSize=7.5,fontName="Helvetica-Bold", alignment=TA_LEFT,   leading=10)
+    wrap_s  = ps("WS", fontSize=7.5,alignment=TA_LEFT,   leading=10, wordWrap="LTR")
+    wrap_c  = ps("WC", fontSize=7.5,alignment=TA_CENTER, leading=10, wordWrap="LTR")
+    wrap_r  = ps("WR", fontSize=7.5,alignment=TA_RIGHT,  leading=10, wordWrap="LTR")
+    # Small style for GST label rows — fits in one line
+    gst_lbl = ps("GL", fontSize=7,  alignment=TA_RIGHT,  leading=8,  wordWrap="LTR")
+    gst_amt = ps("GA", fontSize=7,  alignment=TA_RIGHT,  leading=8,  wordWrap="LTR")
 
     story = []
 
@@ -225,21 +227,24 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
               Paragraph("We are pleased to receive the order for the following items :", lft_s),
               Spacer(1,1*mm)]
 
-    # ── Items table (9 columns with Brand + GST%) ────────────────────────────
-    hdr_row = [
-        Paragraph("S.N.",                hdr_s),
-        Paragraph("Description of Goods",hdr_ls),
-        Paragraph("Brand",               hdr_s),
-        Paragraph("HSN/SAC<br/>Code",    hdr_s),
-        Paragraph("Qty.",                hdr_s),
-        Paragraph("Unit",                hdr_s),
-        Paragraph("GST%",               hdr_s),
-        Paragraph("Rate",                hdr_s),
-        Paragraph("Amount",              hdr_s),
-    ]
+    # ── Column layout (9 cols) ───────────────────────────────────────────────
+    # Col index:  0     1       2      3      4     5     6      7      8
+    # Name:      S.N.  Desc   Brand  HSN    Qty   Unit  GST%   Rate   Amount
     cw = [W*.04, W*.27, W*.09, W*.09, W*.06, W*.06, W*.06, W*.11, W*.12]
 
-    rows = [hdr_row]
+    hdr_row = [
+        Paragraph("S.N.",                 hdr_s),
+        Paragraph("Description of Goods", hdr_ls),
+        Paragraph("Brand",                hdr_s),
+        Paragraph("HSN/SAC<br/>Code",     hdr_s),
+        Paragraph("Qty.",                 hdr_s),
+        Paragraph("Unit",                 hdr_s),
+        Paragraph("GST%",                hdr_s),
+        Paragraph("Rate",                 hdr_s),
+        Paragraph("Amount",               hdr_s),
+    ]
+
+    rows    = [hdr_row]
     subtotal = total_qty = 0.0
 
     for i, it in enumerate(items, 1):
@@ -248,130 +253,158 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
         subtotal  += amt
         total_qty += it["qty"]
         rows.append([
-            Paragraph(str(i),                   wrap_c),
-            Paragraph(it["desc"],               wrap_s),
-            Paragraph(it.get("brand",""),       wrap_c),
-            Paragraph(it["hsn"],                wrap_c),
-            Paragraph(f"{it['qty']:.2f}",       wrap_c),
-            Paragraph(it["unit"],               wrap_c),
-            Paragraph(f"{item_gst:.1f}%",       wrap_c),
-            Paragraph(f"{it['price']:,.2f}",    wrap_r),
-            Paragraph(f"{amt:,.2f}",            wrap_r),
+            Paragraph(str(i),                wrap_c),
+            Paragraph(it["desc"],            wrap_s),
+            Paragraph(it.get("brand",""),    wrap_c),
+            Paragraph(it["hsn"],             wrap_c),
+            Paragraph(f"{it['qty']:.2f}",    wrap_c),
+            Paragraph(it["unit"],            wrap_c),
+            Paragraph(f"{item_gst:.1f}%",    wrap_c),
+            Paragraph(f"{it['price']:,.2f}", wrap_r),
+            Paragraph(f"{amt:,.2f}",         wrap_r),
         ])
 
-    # ── GST calculation: grouped by rate (GRS Solar style) ──────────────────
-    gst_groups = calc_gst_groups(items)
-    total_cgst = round(sum(g["cgst"] for g in gst_groups.values()), 2)
-    total_sgst = round(sum(g["sgst"] for g in gst_groups.values()), 2)
+    # ── GST groups calculation ───────────────────────────────────────────────
+    all_groups, nonzero_groups = calc_gst_groups_nonzero(items)
+    total_cgst = round(sum(g["cgst"] for g in nonzero_groups.values()), 2)
+    total_sgst = round(sum(g["sgst"] for g in nonzero_groups.values()), 2)
     total_tax  = round(total_cgst + total_sgst, 2)
     grand      = round(subtotal + total_tax, 2)
 
-    # Subtotal row
-    rows.append(["","","","","","","","", f"{subtotal:,.2f}"])
+    # ── Subtotal row (spans cols 0-7, amount in col 8) ───────────────────────
+    subtotal_row = [""] * 9
+    subtotal_row[8] = Paragraph(f"{subtotal:,.2f}", wrap_r)
+    rows.append(subtotal_row)
+    first_tail_idx = len(rows) - 1   # row index of subtotal row
 
-    # One CGST row + one SGST row per GST rate group
-    # Compact GST rows (no extra height)
-    for rate in sorted(gst_groups.keys()):
-        g    = gst_groups[rate]
+    # ── CGST / SGST rows — KEY FIX ───────────────────────────────────────────
+    # Layout: cols 0-5 empty | col 6 = label (RIGHT aligned) | col 7 empty | col 8 = amount
+    # This puts the label cleanly in col 6 (GST% column) and amount in col 8 (Amount column)
+    # No spanning needed — each fits neatly in one row, one line
+    for rate in sorted(all_groups.keys()):
+        g    = all_groups[rate]
         half = rate / 2
-    
-        rows.append([
-            "", "", "", "", "",
-            Paragraph(f"CGST@{half:.1f}%", wrap_r),
-            "", "",
-            Paragraph(f"{g['cgst']:,.2f}", wrap_r)
-        ])
-    
-        rows.append([
-            "", "", "", "", "",
-            Paragraph(f"SGST@{half:.1f}%", wrap_r),
-            "", "",
-            Paragraph(f"{g['sgst']:,.2f}", wrap_r)
-        ])
 
-    # Round off
-    round_off = round(round(grand) - grand, 2)
+        # CGST row
+        cgst_row = [""] * 9
+        cgst_row[6] = Paragraph(f"CGST@{half:.1f}%", gst_lbl)
+        cgst_row[8] = Paragraph(f"{g['cgst']:,.2f}",  gst_amt)
+        rows.append(cgst_row)
+
+        # SGST row
+        sgst_row = [""] * 9
+        sgst_row[6] = Paragraph(f"SGST@{half:.1f}%", gst_lbl)
+        sgst_row[8] = Paragraph(f"{g['sgst']:,.2f}",  gst_amt)
+        rows.append(sgst_row)
+
+    # ── Round off row (if needed) ─────────────────────────────────────────────
+    round_off     = round(round(grand) - grand, 2)
+    grand_rounded = int(round(grand + round_off))
     if round_off != 0:
-        rows.append(["","","","","",
-                     Paragraph("Round Off", wrap_s),
-                     "","", f"{round_off:,.2f}"])
-    grand_rounded = round(grand + round_off)
+        ro_row = [""] * 9
+        ro_row[6] = Paragraph("Round Off", gst_lbl)
+        ro_row[8] = Paragraph(f"{round_off:+,.2f}", gst_amt)
+        rows.append(ro_row)
 
-    # Grand total row
-    rows.append(["",
-                 Paragraph("<b>Grand Total</b>", wrap_s),
-                 "","",
-                 f"{int(total_qty)} Units",
-                 "","","",
-                 Paragraph(f"<b>{grand_rounded:,.2f}</b>", wrap_r)])
+    # ── Grand total row ───────────────────────────────────────────────────────
+    gt_row = [""] * 9
+    gt_row[1] = Paragraph("<b>Grand Total</b>",          wrap_s)
+    gt_row[4] = Paragraph(f"{int(total_qty)} Units",     wrap_c)
+    gt_row[8] = Paragraph(f"<b>{grand_rounded:,.2f}</b>",wrap_r)
+    rows.append(gt_row)
 
-    n = len(rows)
-    # number of trailing summary rows (cgst+sgst per group + roundoff + grandtotal)
-    n_tail = sum(2 for _ in gst_groups) + (1 if round_off else 0) + 2  # +subtotal +grand
+    n      = len(rows)
+    n_data = first_tail_idx   # number of data rows (header + items, 1-indexed tail starts here)
 
+    # ── Table style ───────────────────────────────────────────────────────────
     it_t = Table(rows, colWidths=cw, repeatRows=1)
-    it_t.setStyle(TableStyle([
-        ("BOX",           (0,0),     (-1,-1),      .5, colors.black),
-        ("INNERGRID",     (0,0),     (-1, n-n_tail),.3, colors.black),
-        ("LINEABOVE",     (0, n-n_tail), (-1, n-n_tail), .5, colors.black),
-        ("LINEABOVE",     (0, n-1),  (-1, n-1),    .8, colors.black),
-        ("BACKGROUND",    (0,0),     (-1,0),       colors.Color(.92,.92,.92)),
-        ("BACKGROUND",    (0,n-1),   (-1,n-1),     colors.Color(.88,.92,.98)),
-        ("FONTNAME",      (0,0),     (-1,0),       "Helvetica-Bold"),
-        ("FONTNAME",      (0,n-1),   (-1,n-1),     "Helvetica-Bold"),
-        ("FONTSIZE",      (0,0),     (-1,-1),      7.5),
-        ("ALIGN",         (0,0),     (-1,-1),      "CENTER"),
-        ("ALIGN",         (5,n-n_tail),(5,n-2),    "RIGHT"),
-        ("ALIGN",         (8,1),     (8,-1),       "RIGHT"),
-        ("VALIGN",        (0,0),     (-1,-1),      "MIDDLE"),
-        ("LEFTPADDING",   (0,0),     (-1,-1),      2),
-        ("RIGHTPADDING",  (0,0),     (-1,-1),      2),
-        ("TOPPADDING",    (0,0),     (-1,-1),      2),
-        ("BOTTOMPADDING", (0,0),     (-1,-1),      2),
-        ("SPAN",          (1,n-1),   (4,n-1)),
-    ]))
+
+    style_cmds = [
+        # Outer box
+        ("BOX",         (0,0),    (-1,-1),     .5, colors.black),
+        # Inner grid only for header + item rows
+        ("INNERGRID",   (0,0),    (-1, n_data), .3, colors.black),
+        # Separator line above subtotal row
+        ("LINEABOVE",   (0, first_tail_idx), (-1, first_tail_idx), .5, colors.black),
+        # Bold line above grand total
+        ("LINEABOVE",   (0, n-1), (-1, n-1),    .8, colors.black),
+        # Header background
+        ("BACKGROUND",  (0,0),    (-1,0),       colors.Color(.92,.92,.92)),
+        # Grand total background
+        ("BACKGROUND",  (0,n-1),  (-1,n-1),     colors.Color(.88,.92,.98)),
+        # Bold header + grand total
+        ("FONTNAME",    (0,0),    (-1,0),       "Helvetica-Bold"),
+        ("FONTNAME",    (0,n-1),  (-1,n-1),     "Helvetica-Bold"),
+        # Font size everywhere
+        ("FONTSIZE",    (0,0),    (-1,-1),      7.5),
+        # Default center align
+        ("ALIGN",       (0,0),    (-1,-1),      "CENTER"),
+        # Description col LEFT
+        ("ALIGN",       (1,1),    (1, n_data),  "LEFT"),
+        # Amount col RIGHT for all rows
+        ("ALIGN",       (8,1),    (8,-1),       "RIGHT"),
+        # GST label col RIGHT for tail rows
+        ("ALIGN",       (6, first_tail_idx), (6, n-2), "RIGHT"),
+        # Vertical align middle
+        ("VALIGN",      (0,0),    (-1,-1),      "MIDDLE"),
+        # Tight padding
+        ("LEFTPADDING",  (0,0),   (-1,-1),      2),
+        ("RIGHTPADDING", (0,0),   (-1,-1),      2),
+        ("TOPPADDING",   (0,0),   (-1,-1),      1),
+        ("BOTTOMPADDING",(0,0),   (-1,-1),      1),
+        # Grand total: span cols 1-4 for "Grand Total" + "X Units" label
+        ("SPAN",        (1,n-1),  (3,n-1)),
+    ]
+    it_t.setStyle(TableStyle(style_cmds))
     story += [it_t, Spacer(1,2*mm)]
 
-    # ── Tax summary table (GRS Solar style: one row per GST rate) ────────────
+    # ── Tax summary table (one row per rate, skip 0%) ────────────────────────
     tax_hdr = [
-        Paragraph("Tax Rate",    hdr_s),
-        Paragraph("Taxable Amt.",hdr_s),
-        Paragraph("CGST Amt.",   hdr_s),
-        Paragraph("SGST Amt.",   hdr_s),
-        Paragraph("Total Tax",   hdr_s),
+        Paragraph("Tax Rate",     hdr_s),
+        Paragraph("Taxable Amt.", hdr_s),
+        Paragraph("CGST Amt.",    hdr_s),
+        Paragraph("SGST Amt.",    hdr_s),
+        Paragraph("Total Tax",    hdr_s),
     ]
-    tax_rows_data = [tax_hdr]
-    for rate in sorted(gst_groups.keys()):
-        g = gst_groups[rate]
-        tax_rows_data.append([
-            Paragraph(f"{rate:.1f}%",            wrap_c),
-            Paragraph(f"{g['taxable']:,.2f}",    wrap_r),
-            Paragraph(f"{g['cgst']:,.2f}",       wrap_r),
-            Paragraph(f"{g['sgst']:,.2f}",       wrap_r),
-            Paragraph(f"{g['cgst']+g['sgst']:,.2f}", wrap_r),
+    tax_data = [tax_hdr]
+
+    for rate in sorted(all_groups.keys()):
+        g    = all_groups[rate]
+        ttax = round(g["cgst"] + g["sgst"], 2)
+        tax_data.append([
+            Paragraph(f"{rate:.1f}%",           wrap_c),
+            Paragraph(f"{g['taxable']:,.2f}",   wrap_r),
+            Paragraph(f"{g['cgst']:,.2f}",      wrap_r),
+            Paragraph(f"{g['sgst']:,.2f}",      wrap_r),
+            Paragraph(f"{ttax:,.2f}",           wrap_r),
         ])
-    # Total row
-    tax_rows_data.append([
-        Paragraph("<b>Total</b>",           hdr_s),
-        Paragraph(f"<b>{subtotal:,.2f}</b>",wrap_r),
-        Paragraph(f"<b>{total_cgst:,.2f}</b>",wrap_r),
-        Paragraph(f"<b>{total_sgst:,.2f}</b>",wrap_r),
-        Paragraph(f"<b>{total_tax:,.2f}</b>",wrap_r),
+
+    # Totals row (excludes 0% from tax)
+    tax_subtotal = round(sum(g["taxable"] for g in all_groups.values()), 2)
+    tax_data.append([
+        Paragraph("<b>Total</b>",                hdr_s),
+        Paragraph(f"<b>{tax_subtotal:,.2f}</b>", wrap_r),
+        Paragraph(f"<b>{total_cgst:,.2f}</b>",   wrap_r),
+        Paragraph(f"<b>{total_sgst:,.2f}</b>",   wrap_r),
+        Paragraph(f"<b>{total_tax:,.2f}</b>",    wrap_r),
     ])
-    nt = len(tax_rows_data)
-    tt = Table(tax_rows_data, colWidths=[W*.12, W*.22, W*.22, W*.22, W*.22])
+    nt = len(tax_data)
+
+    tt = Table(tax_data, colWidths=[W*.12, W*.22, W*.22, W*.22, W*.22])
     tt.setStyle(TableStyle([
-        ("BOX",       (0,0),   (-1,-1),  .5, colors.black),
-        ("INNERGRID", (0,0),   (-1,-1),  .3, colors.black),
-        ("BACKGROUND",(0,0),   (-1,0),   colors.Color(.92,.92,.92)),
-        ("BACKGROUND",(0,nt-1),(-1,nt-1),colors.Color(.88,.92,.98)),
-        ("FONTNAME",  (0,0),   (-1,0),   "Helvetica-Bold"),
-        ("FONTSIZE",  (0,0),   (-1,-1),  7.5),
-        ("VALIGN",    (0,0),   (-1,-1),  "MIDDLE"),
-        ("LEFTPADDING",  (0,0),(-1,-1),  2),
-        ("RIGHTPADDING", (0,0),(-1,-1),  2),
-        ("TOPPADDING",   (0,0),(-1,-1),  2),
-        ("BOTTOMPADDING",(0,0),(-1,-1),  2),
+        ("BOX",         (0,0),    (-1,-1),    .5, colors.black),
+        ("INNERGRID",   (0,0),    (-1,-1),    .3, colors.black),
+        ("BACKGROUND",  (0,0),    (-1,0),     colors.Color(.92,.92,.92)),
+        ("BACKGROUND",  (0,nt-1), (-1,nt-1),  colors.Color(.88,.92,.98)),
+        ("FONTNAME",    (0,0),    (-1,0),     "Helvetica-Bold"),
+        ("FONTSIZE",    (0,0),    (-1,-1),    7.5),
+        ("ALIGN",       (0,0),    (-1,-1),    "CENTER"),
+        ("ALIGN",       (1,1),    (-1,-1),    "RIGHT"),
+        ("VALIGN",      (0,0),    (-1,-1),    "MIDDLE"),
+        ("LEFTPADDING",  (0,0),   (-1,-1),    2),
+        ("RIGHTPADDING", (0,0),   (-1,-1),    2),
+        ("TOPPADDING",   (0,0),   (-1,-1),    2),
+        ("BOTTOMPADDING",(0,0),   (-1,-1),    2),
     ]))
     story += [tt, Spacer(1,2*mm)]
 
@@ -383,39 +416,42 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
     BANK_W = W * 0.50
 
     bank_title = Paragraph("<b>Bank Details:</b>", sml_b)
-    bdet       = BANK_DETAILS
     bank_info  = Paragraph(
-        f"Bank : <b>Indian Overseas Bank</b><br/>"
-        f"A/c No. : <b>346702000000466</b><br/>"
-        f"IFSC : <b>IOBA0003467</b><br/>"
-        f"Branch : <b>PARMANANDPUR, VARANASI</b>", sml_s)
+        "Bank : <b>Indian Overseas Bank</b><br/>"
+        "A/c No. : <b>346702000000466</b><br/>"
+        "IFSC : <b>IOBA0003467</b><br/>"
+        "Branch : <b>PARMANANDPUR, VARANASI</b>", sml_s)
 
     if qr_bytes:
         try:
             qr_img    = img_to_rl(qr_bytes, 22, 22)
-            bank_cell = Table([[qr_img,[bank_title,Spacer(1,2),bank_info]]],
+            bank_cell = Table([[qr_img, [bank_title, Spacer(1,2), bank_info]]],
                               colWidths=[24*mm, BANK_W-28*mm])
             bank_cell.setStyle(TableStyle([
                 ("VALIGN",(0,0),(-1,-1),"TOP"),
                 ("LEFTPADDING",(0,0),(-1,-1),2),("RIGHTPADDING",(0,0),(-1,-1),2),
                 ("TOPPADDING",(0,0),(-1,-1),2),("BOTTOMPADDING",(0,0),(-1,-1),2)]))
-        except Exception: bank_cell=[bank_title,Spacer(1,2),bank_info]
-    else: bank_cell=[bank_title,Spacer(1,2),bank_info]
+        except Exception:
+            bank_cell = [bank_title, Spacer(1,2), bank_info]
+    else:
+        bank_cell = [bank_title, Spacer(1,2), bank_info]
 
     terms_title = Paragraph("<b>Terms &amp; Conditions:</b>", sml_b)
     thanks_p    = Paragraph("Thanks for doing business with us!", sml_s)
-    terms_items = [Paragraph(f"{j}. {t}", sml_s) for j,t in enumerate(TERMS,1)]
+    terms_items = [Paragraph(f"{j}. {t}", sml_s) for j,t in enumerate(TERMS, 1)]
     for_p       = Paragraph(f"<b>For M/S-{COMPANY_NAME}:</b>", sml_s)
+
     if sig_bytes:
         try:    sig_img = img_to_rl(sig_bytes, 30, 14)
-        except: sig_img = Spacer(1,14*mm)
-    else: sig_img = Spacer(1,14*mm)
+        except: sig_img = Spacer(1, 14*mm)
+    else:
+        sig_img = Spacer(1, 14*mm)
+
     auth_p = Paragraph("Authorized Signatory", sml_s)
+    right_content  = [terms_title, Spacer(1,3), thanks_p, Spacer(1,3)] + terms_items
+    right_content += [Spacer(1,4), for_p, Spacer(1,3), sig_img, auth_p]
 
-    right_content  = [terms_title,Spacer(1,3),thanks_p,Spacer(1,3)]+terms_items
-    right_content += [Spacer(1,4),for_p,Spacer(1,3),sig_img,auth_p]
-
-    footer_t = Table([[bank_cell,right_content]], colWidths=[BANK_W,BANK_W])
+    footer_t = Table([[bank_cell, right_content]], colWidths=[BANK_W, BANK_W])
     footer_t.setStyle(TableStyle([
         ("BOX",(0,0),(-1,-1),.5,colors.black),
         ("LINEBEFORE",(1,0),(1,0),.5,colors.black),
@@ -465,7 +501,6 @@ section.main>div{padding-top:0!important;}
 .metric-value{font-size:20px;font-weight:600;color:#1a1a2e;margin-top:4px;}
 .metric-card.accent{background:#eff6ff;border-color:#bfdbfe;}
 .metric-card.accent .metric-value{color:#1d4ed8;}
-/* GST breakdown cards */
 .gst-breakdown{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;
     padding:12px 16px;margin-bottom:10px;font-size:12px;}
 .gst-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed #d1fae5;}
@@ -518,28 +553,28 @@ with st.sidebar:
 {BANK_DETAILS}
 
 ---
-**GST Rates Supported**  
+**GST Rates**  
 0%, 5%, 12%, 18%, 28%  
-*(per item — auto grouped in PDF)*
+*(0% items excluded from tax)*
     """)
     st.markdown("---")
     if st.button("🚪 Logout", use_container_width=True):
-        for k in list(st.session_state.keys()): st.session_state.pop(k,None)
+        for k in list(st.session_state.keys()): st.session_state.pop(k, None)
         st.rerun()
 
 # ── Session state ─────────────────────────────────────────────────────────────
-def _init(k,v):
-    if k not in st.session_state: st.session_state[k]=v
+def _init(k, v):
+    if k not in st.session_state: st.session_state[k] = v
 
 _init("order_no", gen_order_no())
 _init("order_items", [{"desc":d,"hsn":h,"qty":q,"unit":u,"price":p,"brand":br,"gst":g}
                        for d,h,q,u,p,br,g in SAMPLE_ITEMS])
 
-for asset_key, path in [("qr_bytes",QR_PATH),("sig_bytes",SIG_PATH)]:
+for asset_key, path in [("qr_bytes", QR_PATH), ("sig_bytes", SIG_PATH)]:
     if asset_key not in st.session_state:
         try:
-            with open(path,"rb") as f: st.session_state[asset_key]=f.read()
-        except: st.session_state[asset_key]=None
+            with open(path,"rb") as f: st.session_state[asset_key] = f.read()
+        except: st.session_state[asset_key] = None
 
 # ── Layout ────────────────────────────────────────────────────────────────────
 left, right = st.columns([1.5, 1], gap="large")
@@ -562,14 +597,13 @@ with left:
     with col_btn:
         st.write(""); st.write("")
         if st.button("↻ New", use_container_width=True):
-            st.session_state.order_no=gen_order_no(); st.rerun()
+            st.session_state.order_no = gen_order_no(); st.rerun()
     order_date     = st.date_input("Order Date *", value=datetime.date.today())
     order_date_str = order_date.strftime("%d-%m-%Y")
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Items
     st.markdown('<div class="section-card"><div class="section-title">📦 Line Items</div>', unsafe_allow_html=True)
-
     st.markdown("""
 <style>
 .ih{display:grid;
@@ -593,30 +627,28 @@ with left:
                                     key=f"d{i}", label_visibility="collapsed",
                                     placeholder="Description", height=68)
         with c2: item["brand"] = st.text_input("Brand", value=item.get("brand",""),
-                                    key=f"br{i}", label_visibility="collapsed",
-                                    placeholder="Brand")
+                                    key=f"br{i}", label_visibility="collapsed", placeholder="Brand")
         with c3: item["hsn"]   = st.text_input("HSN",   value=item["hsn"],
-                                    key=f"h{i}", label_visibility="collapsed",
-                                    placeholder="HSN")
+                                    key=f"h{i}", label_visibility="collapsed", placeholder="HSN")
         with c4: item["qty"]   = st.number_input("Qty", value=float(item["qty"]),
-                                    min_value=0.0, step=1.0,
-                                    key=f"q{i}", label_visibility="collapsed", format="%.2f")
+                                    min_value=0.0, step=1.0, key=f"q{i}",
+                                    label_visibility="collapsed", format="%.2f")
         with c5: item["unit"]  = st.selectbox("Unit", COMMON_UNITS,
                                     index=COMMON_UNITS.index(item["unit"])
                                           if item["unit"] in COMMON_UNITS else 0,
                                     key=f"u{i}", label_visibility="collapsed")
-        with c6: item["gst"]   = st.selectbox("GST%",
-                                    [f"{g:.0f}%" for g in GST_OPTIONS],
-                                    index=GST_OPTIONS.index(float(item.get("gst",18.0)))
-                                          if float(item.get("gst",18.0)) in GST_OPTIONS else 3,
-                                    key=f"g{i}", label_visibility="collapsed")
-        # parse back from string
-        item["gst"] = float(item["gst"].replace("%",""))
+        with c6:
+            gst_str = st.selectbox("GST%",
+                          [f"{g:.0f}%" for g in GST_OPTIONS],
+                          index=GST_OPTIONS.index(float(item.get("gst",18.0)))
+                                if float(item.get("gst",18.0)) in GST_OPTIONS else 3,
+                          key=f"g{i}", label_visibility="collapsed")
+            item["gst"] = float(gst_str.replace("%",""))
         with c7: item["price"] = st.number_input("Price", value=float(item["price"]),
-                                    min_value=0.0, step=10.0,
-                                    key=f"p{i}", label_visibility="collapsed", format="%.2f")
+                                    min_value=0.0, step=10.0, key=f"p{i}",
+                                    label_visibility="collapsed", format="%.2f")
         with c8:
-            amt = item["qty"]*item["price"]
+            amt = item["qty"] * item["price"]
             st.markdown(f"<div style='padding:8px 2px;font-weight:600;font-size:11px;"
                         f"color:#1a1a2e;text-align:right'>&#8377;{amt:,.2f}</div>",
                         unsafe_allow_html=True)
@@ -638,10 +670,9 @@ with left:
                 {"desc":d,"hsn":h,"qty":q,"unit":u,"price":p,"brand":br,"gst":g}
                 for d,h,q,u,p,br,g in SAMPLE_ITEMS]
             st.rerun()
-
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Bank details
+    # Bank
     st.markdown('<div class="section-card"><div class="section-title">🏦 Bank Details</div>', unsafe_allow_html=True)
     uq, us = st.columns(2)
     with uq:
@@ -659,20 +690,18 @@ with left:
     </div>""", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-
 # ════════════════════════════════════
 # RIGHT panel
 # ════════════════════════════════════
 with right:
     valid_items = [it for it in st.session_state.order_items if it["desc"].strip()]
 
-    # ── Live totals ───────────────────────────────────────────────────────────
     subtotal = sum(it["qty"]*it["price"] for it in valid_items)
-    gst_grps = calc_gst_groups(valid_items)
-    total_cgst = round(sum(g["cgst"] for g in gst_grps.values()), 2)
-    total_sgst = round(sum(g["sgst"] for g in gst_grps.values()), 2)
-    total_tax  = round(total_cgst+total_sgst, 2)
-    grand_total= round(subtotal+total_tax, 2)
+    all_grps, nz_grps = calc_gst_groups_nonzero(valid_items)
+    total_cgst    = round(sum(g["cgst"] for g in nz_grps.values()), 2)
+    total_sgst    = round(sum(g["sgst"] for g in nz_grps.values()), 2)
+    total_tax     = round(total_cgst + total_sgst, 2)
+    grand_total   = round(subtotal + total_tax, 2)
     grand_rounded = round(grand_total)
 
     st.markdown(f"""
@@ -700,33 +729,33 @@ with right:
     st.markdown(f"*{num_to_words(grand_rounded)}*")
     st.markdown("<hr/>", unsafe_allow_html=True)
 
-    # ── GST breakdown (GRS Solar style) ──────────────────────────────────────
-    if gst_grps:
+    # GST Breakdown
+    if all_grps:
         st.markdown('<div class="section-card"><div class="section-title">🧮 GST Breakdown (Auto)</div>', unsafe_allow_html=True)
-        breakdown_html = '<div class="gst-breakdown">'
-        for rate in sorted(gst_grps.keys()):
-            g    = gst_grps[rate]
-            half = rate/2
-            ttax = round(g["cgst"]+g["sgst"],2)
-            breakdown_html += f"""
+        html = '<div class="gst-breakdown">'
+        for rate in sorted(all_grps.keys()):
+            g    = all_grps[rate]
+            half = rate / 2
+            note = " <i>(excluded from tax)</i>" if rate == 0 else ""
+            html += f"""
             <div class="gst-row">
-              <span class="gst-label">CGST @ {half:.1f}% &nbsp;(on &#8377;{g['taxable']:,.2f})</span>
+              <span class="gst-label">CGST @ {half:.1f}%{note} &nbsp;(on &#8377;{g['taxable']:,.2f})</span>
               <span class="gst-val">&#8377;{g['cgst']:,.2f}</span>
             </div>
             <div class="gst-row">
-              <span class="gst-label">SGST @ {half:.1f}% &nbsp;(on &#8377;{g['taxable']:,.2f})</span>
+              <span class="gst-label">SGST @ {half:.1f}%{note}</span>
               <span class="gst-val">&#8377;{g['sgst']:,.2f}</span>
             </div>"""
-        breakdown_html += f"""
+        html += f"""
             <div class="gst-row">
-              <span class="gst-label">&#8209;&#8209;&#8209; Total Tax</span>
+              <span class="gst-label">── Total Tax (excl. 0% items)</span>
               <span class="gst-val">&#8377;{total_tax:,.2f}</span>
             </div>
         </div>"""
-        st.markdown(breakdown_html, unsafe_allow_html=True)
+        st.markdown(html, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # ── Order preview ─────────────────────────────────────────────────────────
+    # Order preview
     st.markdown('<div class="section-card"><div class="section-title">📄 Order Preview</div>', unsafe_allow_html=True)
     if order_no and party_name and party_city:
         st.markdown(f"""
@@ -740,25 +769,26 @@ with right:
           <tr><td style="color:#7a7a9d;padding:5px 0">Items</td>
               <td style="font-weight:600;color:#1a1a2e">{len(valid_items)} item(s)</td></tr>
           <tr><td style="color:#7a7a9d;padding:5px 0">GST Groups</td>
-              <td style="font-weight:600;color:#059669">{", ".join(f"{r:.0f}%" for r in sorted(gst_grps.keys()))}</td></tr>
+              <td style="font-weight:600;color:#059669">{", ".join(f"{r:.0f}%" for r in sorted(all_grps.keys()))}</td></tr>
         </table>""", unsafe_allow_html=True)
     else:
         st.info("Fill in party name, city, and order number to see preview.")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # ── Items expander ────────────────────────────────────────────────────────
     if valid_items:
         with st.expander(f"📦 {len(valid_items)} Item(s) — click to expand"):
-            for i,it in enumerate(valid_items,1):
-                amt   = it["qty"]*it["price"]
+            for i, it in enumerate(valid_items, 1):
+                amt   = it["qty"] * it["price"]
                 brand = f" | **{it.get('brand','')}**" if it.get("brand") else ""
-                st.markdown(f"**{i}. {it['desc']}**{brand} | GST:{it.get('gst',18):.0f}%  \n"
-                            f"HSN:`{it['hsn']}` | {it['qty']} {it['unit']} × ₹{it['price']:,.2f} = **₹{amt:,.2f}**")
-                if i<len(valid_items): st.markdown("<hr style='margin:6px 0;border-color:#f0f2fa'>",unsafe_allow_html=True)
+                gst_note = " *(0% - no tax)*" if float(it.get("gst",18)) == 0 else f" | GST:{it.get('gst',18):.0f}%"
+                st.markdown(f"**{i}. {it['desc']}**{brand}{gst_note}  \n"
+                            f"HSN:`{it['hsn']}` | {it['qty']} {it['unit']} × "
+                            f"₹{it['price']:,.2f} = **₹{amt:,.2f}**")
+                if i < len(valid_items):
+                    st.markdown("<hr style='margin:6px 0;border-color:#f0f2fa'>", unsafe_allow_html=True)
 
-    # ── Download ──────────────────────────────────────────────────────────────
     st.markdown("<hr/>", unsafe_allow_html=True)
-    errs=[]
+    errs = []
     if not party_name.strip(): errs.append("Party Name is required.")
     if not party_city.strip():  errs.append("City is required.")
     if not order_no.strip():    errs.append("Order Number is required.")
