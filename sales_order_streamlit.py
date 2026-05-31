@@ -281,21 +281,7 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
     # Layout: cols 0-5 empty | col 6 = label (RIGHT aligned) | col 7 empty | col 8 = amount
     # This puts the label cleanly in col 6 (GST% column) and amount in col 8 (Amount column)
     # No spanning needed — each fits neatly in one row, one line
-    for rate in sorted(all_groups.keys()):
-        g    = all_groups[rate]
-        half = rate / 2
-
-        # CGST row
-        cgst_row = [""] * 9
-        cgst_row[6] = Paragraph(f"CGST@{half:.1f}%", gst_lbl)
-        cgst_row[8] = Paragraph(f"{g['cgst']:,.2f}",  gst_amt)
-        rows.append(cgst_row)
-
-        # SGST row
-        sgst_row = [""] * 9
-        sgst_row[6] = Paragraph(f"SGST@{half:.1f}%", gst_lbl)
-        sgst_row[8] = Paragraph(f"{g['sgst']:,.2f}",  gst_amt)
-        rows.append(sgst_row)
+    
 
     # ── Round off row (if needed) ─────────────────────────────────────────────
     round_off     = round(round(grand) - grand, 2)
