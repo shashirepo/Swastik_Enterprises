@@ -217,7 +217,7 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
     # ── Party / Order box ────────────────────────────────────────────────────
     pp = f"<b>Party Details :</b><br/>{party_name}<br/>{party_city}"
     op = f"<b>Order No. :</b> {order_no}<br/><b>Dated :</b> {order_date}"
-    pt = Table([[Paragraph(pp,lft_s), Paragraph(op,lft_s)]], colWidths=[W*.20, W*.80])
+    pt = Table([[Paragraph(pp,lft_s), Paragraph(op,lft_s)]], colWidths=[W*.55, W*.45])
     pt.setStyle(TableStyle([
         ("BOX",(0,0),(-1,-1),.5,colors.black),("LINEBEFORE",(1,0),(1,0),.5,colors.black),
         ("VALIGN",(0,0),(-1,-1),"TOP"),
