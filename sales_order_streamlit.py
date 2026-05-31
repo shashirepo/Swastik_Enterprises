@@ -562,7 +562,7 @@ for asset_key, path in [("qr_bytes", QR_PATH), ("sig_bytes", SIG_PATH)]:
         except: st.session_state[asset_key] = None
 
 # ── Layout ────────────────────────────────────────────────────────────────────
-left, right = st.columns([2, 1], gap="large")
+left, right = st.columns([2.3, 1], gap="large")
 
 # ════════════════════════════════════
 # LEFT panel
