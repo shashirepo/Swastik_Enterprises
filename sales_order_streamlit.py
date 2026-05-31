@@ -295,7 +295,6 @@ def build_pdf(party_name, party_city, order_no, order_date, items,
     # ── Grand total row ───────────────────────────────────────────────────────
     gt_row = [""] * 9
     gt_row[1] = Paragraph("<b>Grand Total</b>",          wrap_s)
-    gt_row[4] = Paragraph(f"{int(total_qty)} Units",     wrap_c)
     gt_row[8] = Paragraph(f"<b>{grand_rounded:,.2f}</b>",wrap_r)
     rows.append(gt_row)
 
