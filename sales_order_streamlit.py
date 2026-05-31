@@ -37,12 +37,12 @@ COMMON_UNITS = ["Pcs.", "MTR", "KG", "Set", "Pair", "Bag", "Box", "Roll", "Ltr",
 
 SAMPLE_ITEMS = [
     ("ADANI SOLAR PANEL 620 WATT N-TYPE TOPCON", "85414300",  5.0,  "Pcs.", 22000.00, "ADANI",   5.0),
-    ("DEYE INVERTER 3.3 KW ON GRID",             "85044010",  1.0,  "Pcs.", 19500.00, "DEYE",   18.0),
-    ("SOLAR STRUCTURE (MEDIUM 4FT X 6FT)",        "73089030",  1.0,  "Set",  13000.00, "GENERIC",18.0),
-    ("POLYCAB WIRE",                              "73181500",200.0,  "MTR",     80.00, "POLYCAB",18.0),
-    ("ACDB & DCDB BOX",                           "25081010",  1.0,  "Set",   4050.00, "GENERIC",18.0),
-    ("TRANSPORT & INSTALLATION CHARGE",           "867978",    1.0,  "Set",   8000.00, "",        0.0),
-    ("ELECTRIC INHANCEMENT CHARGE 2KW TO 3KW",   "867979",    1.0,  "Nos.",  1350.00, "",       18.0),
+    ("DEYE INVERTER 3.3 KW ON GRID",             "85044090",  1.0,  "Pcs.", 19500.00, "DEYE",   18.0),
+    ("3KW APOLLO SOLAR STRUCTURE (MEDIUM 4FT X 6FT)",        "73089030",  1.0,  "Set",  13000.00, "GENERIC",18.0),
+    ("POLYCAB WIRE",                              "85446090",200.0,  "MTR",     80.00, "POLYCAB",18.0),
+    ("ACDB & DCDB BOX HAVELLES + HAVELLES",                           "85369030",  1.0,  "Set",   4050.00, "GENERIC",18.0),
+    ("TRANSPORT & INSTALLATION CHARGES",           "9954",    1.0,  "Set",   8000.00, "",        0.0),
+    ("ELECTRIC INHANCEMENT CHARGE 2KW TO 3KW",   "9954",    1.0,  "Nos.",  1350.00, "",       18.0),
 ]
 
 # ══════════════════════════════════════════════════════════════════════════════
