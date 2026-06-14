@@ -164,7 +164,6 @@ button[kind="header"] { visibility: visible !important; opacity: 1 !important; }
 .stSelectbox div[data-baseweb="select"] > div > div:first-child {
   display: flex !important;
   justify-content: center !important;
-  padding-left: 2px !important;
 }
 
 /* Date Input */
