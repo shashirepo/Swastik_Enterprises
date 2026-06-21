@@ -4,6 +4,7 @@ ui/tab_sales_order.py — Tab 1: Sales Order / Quotation UI
 
 import base64
 import datetime
+import uuid
 
 import streamlit as st
 
@@ -195,46 +196,45 @@ def render_tab_sales_order() -> None:
         st.markdown('<div class="section-card"><div class="section-title">📦 Line Items</div>', unsafe_allow_html=True)
         st.markdown(ITEMS_HEADER_SO, unsafe_allow_html=True)
 
-        # Process any pending deletion BEFORE rendering rows
-        if st.session_state.get("so_pending_delete") is not None:
-            del_idx = st.session_state.so_pending_delete
-            st.session_state.so_pending_delete = None
-            if 0 <= del_idx < len(st.session_state.order_items):
-                st.session_state.order_items.pop(del_idx)
-            st.rerun()
+        # Ensure every item has a stable unique ID (used as widget key suffix)
+        for item in st.session_state.order_items:
+            if "_id" not in item:
+                item["_id"] = uuid.uuid4().hex
 
         row_list = st.session_state.order_items
+        del_id   = None
 
-        for i, item in enumerate(row_list):
+        for item in row_list:
+            rid = item["_id"]
             c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns([2.4, 0.85, 0.80, 0.50, 0.80, 0.65, 0.80, 0.65, 0.50], gap="small")
             with c1:
                 item["desc"] = st.text_area("Desc", value=item["desc"],
-                                   key=f"so_d{i}", label_visibility="collapsed",
+                                   key=f"so_d_{rid}", label_visibility="collapsed",
                                    placeholder="Description of goods", height=68)
             with c2:
                 item["brand"] = st.text_input("Brand", value=item.get("brand", ""),
-                                    key=f"so_br{i}", label_visibility="collapsed", placeholder="Brand")
+                                    key=f"so_br_{rid}", label_visibility="collapsed", placeholder="Brand")
             with c3:
                 item["hsn"] = st.text_input("HSN", value=item["hsn"],
-                                  key=f"so_h{i}", label_visibility="collapsed", placeholder="HSN")
+                                  key=f"so_h_{rid}", label_visibility="collapsed", placeholder="HSN")
             with c4:
                 item["qty"] = st.number_input("Qty", value=float(item["qty"]),
-                                  min_value=0.0, step=1.0, key=f"so_q{i}",
+                                  min_value=0.0, step=1.0, key=f"so_q_{rid}",
                                   label_visibility="collapsed", format="%.2f")
             with c5:
                 item["unit"] = st.selectbox("Unit", COMMON_UNITS,
                                   index=COMMON_UNITS.index(item["unit"]) if item["unit"] in COMMON_UNITS else 0,
-                                  key=f"so_u{i}", label_visibility="collapsed")
+                                  key=f"so_u_{rid}", label_visibility="collapsed")
             with c6:
                 gst_str = st.selectbox("GST%",
                               [f"{g:.0f}%" for g in GST_OPTIONS],
                               index=GST_OPTIONS.index(float(item.get("gst", 18.0)))
                                     if float(item.get("gst", 18.0)) in GST_OPTIONS else 3,
-                              key=f"so_g{i}", label_visibility="collapsed")
+                              key=f"so_g_{rid}", label_visibility="collapsed")
                 item["gst"] = float(gst_str.replace("%", ""))
             with c7:
                 price_str = st.text_input("Price", value=f"{item['price']:.2f}",
-                                key=f"so_p{i}", label_visibility="collapsed", placeholder="0.00")
+                                key=f"so_p_{rid}", label_visibility="collapsed", placeholder="0.00")
                 try:
                     item["price"] = max(0.0, float(price_str.replace(",", "").strip()))
                 except (ValueError, AttributeError):
@@ -243,21 +243,30 @@ def render_tab_sales_order() -> None:
                 amt = item["qty"] * item["price"]
                 st.markdown(f"<div class='row-amt'>₹{amt:,.2f}</div>", unsafe_allow_html=True)
             with c9:
-                if st.button("✕", key=f"so_del{i}", help="Remove this row"):
-                    st.session_state.so_pending_delete = i
-                    st.rerun()
+                if st.button("✕", key=f"so_del_{rid}", help="Remove this row"):
+                    del_id = rid
+
+        # Remove the deleted item by its stable ID (not by index)
+        if del_id is not None:
+            # Clean up widget state keys for the deleted item
+            for suffix in ("d", "br", "h", "q", "u", "g", "p", "del"):
+                st.session_state.pop(f"so_{suffix}_{del_id}", None)
+            st.session_state.order_items = [
+                it for it in st.session_state.order_items if it["_id"] != del_id
+            ]
+            st.rerun()
 
         ca, cl = st.columns(2)
         with ca:
             if st.button("＋  Add Row", use_container_width=True, key="so_add"):
                 st.session_state.order_items.append(
-                    {"desc": "", "hsn": "", "qty": 1.0, "unit": "Pcs.", "price": 0.0, "brand": "", "gst": 18.0}
+                    {"_id": uuid.uuid4().hex, "desc": "", "hsn": "", "qty": 1.0, "unit": "Pcs.", "price": 0.0, "brand": "", "gst": 18.0}
                 )
                 st.rerun()
         with cl:
             if st.button("📥  Load Sample Data", use_container_width=True, key="so_load"):
                 st.session_state.order_items = [
-                    {"desc": d, "hsn": h, "qty": q, "unit": u, "price": p, "brand": br, "gst": g}
+                    {"_id": uuid.uuid4().hex, "desc": d, "hsn": h, "qty": q, "unit": u, "price": p, "brand": br, "gst": g}
                     for d, h, q, u, p, br, g in SAMPLE_ITEMS
                 ]
                 st.rerun()

@@ -5,6 +5,7 @@ Requires:  pip install streamlit reportlab Pillow
 """
 
 import streamlit as st
+import uuid
 
 from auth import show_login_page
 from config import BANK_DETAILS, COMPANY_ADDR1, COMPANY_GSTIN, COMPANY_NAME, QR_PATH, SAMPLE_ITEMS, SIG_PATH
@@ -128,12 +129,12 @@ def _init(key, value):
 
 _init("order_no",    gen_order_no())
 _init("order_items", [
-    {"desc": d, "hsn": h, "qty": q, "unit": u, "price": p, "brand": br, "gst": g}
+    {"_id": uuid.uuid4().hex, "desc": d, "hsn": h, "qty": q, "unit": u, "price": p, "brand": br, "gst": g}
     for d, h, q, u, p, br, g in SAMPLE_ITEMS
 ])
 _init("inv_no",    gen_invoice_no())
 _init("inv_items", [
-    {"desc": d, "hsn": h, "qty": q, "unit": u, "price": p, "brand": br, "gst": g}
+    {"_id": uuid.uuid4().hex, "desc": d, "hsn": h, "qty": q, "unit": u, "price": p, "brand": br, "gst": g}
     for d, h, q, u, p, br, g in SAMPLE_ITEMS
 ])
 

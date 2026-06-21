@@ -4,6 +4,7 @@ ui/tab_tax_invoice.py — Tab 2: Tax Invoice UI
 
 import base64
 import datetime
+import uuid
 
 import streamlit as st
 
@@ -200,46 +201,45 @@ def render_tab_tax_invoice() -> None:
         st.markdown('<div class="section-card"><div class="section-title">📦 Line Items</div>', unsafe_allow_html=True)
         st.markdown(ITEMS_HEADER_INV, unsafe_allow_html=True)
 
-        # Process any pending deletion BEFORE rendering rows
-        if st.session_state.get("inv_pending_delete") is not None:
-            del_idx = st.session_state.inv_pending_delete
-            st.session_state.inv_pending_delete = None
-            if 0 <= del_idx < len(st.session_state.inv_items):
-                st.session_state.inv_items.pop(del_idx)
-            st.rerun()
+        # Ensure every item has a stable unique ID (used as widget key suffix)
+        for item in st.session_state.inv_items:
+            if "_id" not in item:
+                item["_id"] = uuid.uuid4().hex
 
         inv_row_list = st.session_state.inv_items
+        inv_del_id   = None
 
-        for i, item in enumerate(inv_row_list):
+        for item in inv_row_list:
+            rid = item["_id"]
             c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns([2.4, 0.85, 0.80, 0.50, 0.80, 0.65, 0.80, 0.65, 0.50], gap="small")
             with c1:
                 item["desc"] = st.text_area("Desc", value=item["desc"],
-                                   key=f"inv_d{i}", label_visibility="collapsed",
+                                   key=f"inv_d_{rid}", label_visibility="collapsed",
                                    placeholder="Description of goods", height=68)
             with c2:
                 item["brand"] = st.text_input("Brand", value=item.get("brand", ""),
-                                    key=f"inv_br{i}", label_visibility="collapsed", placeholder="Brand")
+                                    key=f"inv_br_{rid}", label_visibility="collapsed", placeholder="Brand")
             with c3:
                 item["hsn"] = st.text_input("HSN", value=item["hsn"],
-                                  key=f"inv_h{i}", label_visibility="collapsed", placeholder="HSN")
+                                  key=f"inv_h_{rid}", label_visibility="collapsed", placeholder="HSN")
             with c4:
                 item["qty"] = st.number_input("Qty", value=float(item["qty"]),
-                                  min_value=0.0, step=1.0, key=f"inv_q{i}",
+                                  min_value=0.0, step=1.0, key=f"inv_q_{rid}",
                                   label_visibility="collapsed", format="%.2f")
             with c5:
                 item["unit"] = st.selectbox("Unit", COMMON_UNITS,
                                   index=COMMON_UNITS.index(item["unit"]) if item["unit"] in COMMON_UNITS else 0,
-                                  key=f"inv_u{i}", label_visibility="collapsed")
+                                  key=f"inv_u_{rid}", label_visibility="collapsed")
             with c6:
                 gst_str2 = st.selectbox("GST%",
                                [f"{g:.0f}%" for g in GST_OPTIONS],
                                index=GST_OPTIONS.index(float(item.get("gst", 18.0)))
                                      if float(item.get("gst", 18.0)) in GST_OPTIONS else 3,
-                               key=f"inv_g{i}", label_visibility="collapsed")
+                               key=f"inv_g_{rid}", label_visibility="collapsed")
                 item["gst"] = float(gst_str2.replace("%", ""))
             with c7:
                 price_str = st.text_input("Price", value=f"{item['price']:.2f}",
-                                key=f"inv_p{i}", label_visibility="collapsed", placeholder="0.00")
+                                key=f"inv_p_{rid}", label_visibility="collapsed", placeholder="0.00")
                 try:
                     item["price"] = max(0.0, float(price_str.replace(",", "").strip()))
                 except (ValueError, AttributeError):
@@ -248,21 +248,29 @@ def render_tab_tax_invoice() -> None:
                 amt2 = item["qty"] * item["price"]
                 st.markdown(f"<div class='row-amt'>₹{amt2:,.2f}</div>", unsafe_allow_html=True)
             with c9:
-                if st.button("✕", key=f"inv_del{i}", help="Remove this row"):
-                    st.session_state.inv_pending_delete = i
-                    st.rerun()
+                if st.button("✕", key=f"inv_del_{rid}", help="Remove this row"):
+                    inv_del_id = rid
+
+        # Remove the deleted item by its stable ID (not by index)
+        if inv_del_id is not None:
+            for suffix in ("d", "br", "h", "q", "u", "g", "p", "del"):
+                st.session_state.pop(f"inv_{suffix}_{inv_del_id}", None)
+            st.session_state.inv_items = [
+                it for it in st.session_state.inv_items if it["_id"] != inv_del_id
+            ]
+            st.rerun()
 
         ia, il = st.columns(2)
         with ia:
             if st.button("＋  Add Row", use_container_width=True, key="inv_add"):
                 st.session_state.inv_items.append(
-                    {"desc": "", "hsn": "", "qty": 1.0, "unit": "Pcs.", "price": 0.0, "brand": "", "gst": 18.0}
+                    {"_id": uuid.uuid4().hex, "desc": "", "hsn": "", "qty": 1.0, "unit": "Pcs.", "price": 0.0, "brand": "", "gst": 18.0}
                 )
                 st.rerun()
         with il:
             if st.button("📥  Load Sample Data", use_container_width=True, key="inv_load"):
                 st.session_state.inv_items = [
-                    {"desc": d, "hsn": h, "qty": q, "unit": u, "price": p, "brand": br, "gst": g}
+                    {"_id": uuid.uuid4().hex, "desc": d, "hsn": h, "qty": q, "unit": u, "price": p, "brand": br, "gst": g}
                     for d, h, q, u, p, br, g in SAMPLE_ITEMS
                 ]
                 st.rerun()
