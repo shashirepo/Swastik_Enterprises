@@ -200,8 +200,15 @@ def render_tab_tax_invoice() -> None:
         st.markdown('<div class="section-card"><div class="section-title">📦 Line Items</div>', unsafe_allow_html=True)
         st.markdown(ITEMS_HEADER_INV, unsafe_allow_html=True)
 
-        inv_row_list  = st.session_state.inv_items
-        inv_to_delete = []
+        # Process any pending deletion BEFORE rendering rows
+        if st.session_state.get("inv_pending_delete") is not None:
+            del_idx = st.session_state.inv_pending_delete
+            st.session_state.inv_pending_delete = None
+            if 0 <= del_idx < len(st.session_state.inv_items):
+                st.session_state.inv_items.pop(del_idx)
+            st.rerun()
+
+        inv_row_list = st.session_state.inv_items
 
         for i, item in enumerate(inv_row_list):
             c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns([2.4, 0.85, 0.80, 0.50, 0.80, 0.65, 0.80, 0.65, 0.50], gap="small")
@@ -242,11 +249,8 @@ def render_tab_tax_invoice() -> None:
                 st.markdown(f"<div class='row-amt'>₹{amt2:,.2f}</div>", unsafe_allow_html=True)
             with c9:
                 if st.button("✕", key=f"inv_del{i}", help="Remove this row"):
-                    inv_to_delete.append(i)
-
-        for idx in reversed(inv_to_delete):
-            st.session_state.inv_items.pop(idx)
-            st.rerun()
+                    st.session_state.inv_pending_delete = i
+                    st.rerun()
 
         ia, il = st.columns(2)
         with ia:

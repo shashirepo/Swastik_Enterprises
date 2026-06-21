@@ -195,8 +195,15 @@ def render_tab_sales_order() -> None:
         st.markdown('<div class="section-card"><div class="section-title">📦 Line Items</div>', unsafe_allow_html=True)
         st.markdown(ITEMS_HEADER_SO, unsafe_allow_html=True)
 
-        row_list  = st.session_state.order_items
-        to_delete = []
+        # Process any pending deletion BEFORE rendering rows
+        if st.session_state.get("so_pending_delete") is not None:
+            del_idx = st.session_state.so_pending_delete
+            st.session_state.so_pending_delete = None
+            if 0 <= del_idx < len(st.session_state.order_items):
+                st.session_state.order_items.pop(del_idx)
+            st.rerun()
+
+        row_list = st.session_state.order_items
 
         for i, item in enumerate(row_list):
             c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns([2.4, 0.85, 0.80, 0.50, 0.80, 0.65, 0.80, 0.65, 0.50], gap="small")
@@ -237,11 +244,8 @@ def render_tab_sales_order() -> None:
                 st.markdown(f"<div class='row-amt'>₹{amt:,.2f}</div>", unsafe_allow_html=True)
             with c9:
                 if st.button("✕", key=f"so_del{i}", help="Remove this row"):
-                    to_delete.append(i)
-
-        for idx in reversed(to_delete):
-            st.session_state.order_items.pop(idx)
-            st.rerun()
+                    st.session_state.so_pending_delete = i
+                    st.rerun()
 
         ca, cl = st.columns(2)
         with ca:
