@@ -27,9 +27,9 @@ SAMPLE_ITEMS = [
     ("3KW APOLLO SOLAR STRUCTURE (MEDIUM 4FT X 6FT)",        "73089030",  1.0,  "Set",  13000.00, "GENERIC",18.0),
     ("POLYCAB WIRE",                              "85446090",200.0,  "MTR",     80.00, "POLYCAB",18.0),
     ("ACDB & DCDB BOX",                           "85369030",  1.0,  "Set",      0.00, "GENERIC",18.0),
-    ("POLYCAB DC WIRE 60MTR",                      "85446090", 60.0,  "MTR",      0.00, "POLYCAB",18.0),
-    ("POLYCAB AC WIRE 90MTR",                      "85446090", 90.0,  "MTR",      0.00, "POLYCAB",18.0),
-    ("EARTHING WIRE 90MTR",                        "85446026", 90.0,  "MTR",      0.00, "GENERIC",18.0),
+    ("POLYCAB DC WIRE 4MM",                      "85446090", 60.0,  "MTR",      0.00, "POLYCAB",18.0),
+    ("POLYCAB AC WIRE 4MM",                      "85446090", 90.0,  "MTR",      0.00, "POLYCAB",18.0),
+    ("EARTHING COPPER WIRE 4MM",                        "85446026", 90.0,  "MTR",      0.00, "GENERIC",18.0),
     ("INSTALLATION CHARGE",                        "85379995",  1.0,  "Set",      0.00, "",       18.0),
     ("TRANSPORT CHARGE",                           "85389965",  1.0,  "Set",      0.00, "",       18.0),
 ]
