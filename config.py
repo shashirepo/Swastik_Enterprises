@@ -25,7 +25,7 @@ SAMPLE_ITEMS = [
     ("SOLAR PANEL 620 WATT N-TYPE TOPCON", "85414300",  5.0,  "Pcs.", 22000.00, "ADANI",   5.0),
     ("ON GRID INVERTER 3.3 KW ",             "85044090",  1.0,  "Pcs.", 19500.00, "DEYE",   18.0),
     ("3KW APOLLO SOLAR STRUCTURE (MEDIUM 4FT X 6FT)",        "73089030",  1.0,  "Set",  13000.00, "GENERIC",18.0),
-    ("ACDB & DCDB BOX",                           "85369030",  1.0,  "Set",      0.00, "GENERIC",18.0),
+    ("ACDB & DCDB BOX",                           "85369030",  1.0,  "Set",      4750.00, "HAVELLS",18.0),
     ("POLYCAB DC WIRE 4MM",                      "85446090", 40.0,  "MTR",      0.00, "POLYCAB",18.0),
     ("POLYCAB AC WIRE 4MM",                      "85446090", 45.0,  "MTR",      0.00, "POLYCAB",18.0),
     ("EARTHING COPPER WIRE 4MM",                        "85446026", 70.0,  "MTR",      0.00, "GENERIC",18.0),
