@@ -174,7 +174,7 @@ def render_tab_sales_order() -> None:
         with c1:
             party_name = st.text_input("Party Name *", placeholder="e.g. SHASHI ENTERPRISES", key="so_pname")
         with c2:
-            party_city = st.text_input("City *", placeholder="e.g. VARANASI", key="so_pcity")
+            party_city = st.text_input("City *", value="Varanasi, Uttar Pradesh", placeholder="e.g. VARANASI", key="so_pcity")
         st.markdown("</div>", unsafe_allow_html=True)
 
         # ── Order Details ─────────────────────────────────────────────────────
