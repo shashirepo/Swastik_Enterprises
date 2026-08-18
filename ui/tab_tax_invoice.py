@@ -156,16 +156,16 @@ def _build_invoice_summary(
         st.markdown(hero_html, unsafe_allow_html=True)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────────────────────────
 
 def render_tab_tax_invoice() -> None:
     """Render the Tax Invoice tab."""
 
     inv_left, inv_right = st.columns([3.5, 1], gap="small")
 
-    # ══════════════════════════════════════════════════════════════════════════
+    # ═══════════════════════════════════════════════════════════════════
     # LEFT — form inputs
-    # ══════════════════════════════════════════════════════════════════════════
+    # ═══════════════════════════════════════════════════════════════════
     with inv_left:
 
         # ── Buyer Details ─────────────────────────────────────────────────────
@@ -179,7 +179,7 @@ def render_tab_tax_invoice() -> None:
         with r2c1:
             inv_party_gstin = st.text_input("Buyer GSTIN", placeholder="09XXXXX0000X1ZX  (optional)", key="inv_pgstin")
         with r2c2:
-            inv_pos = st.text_input("Place of Supply", placeholder="e.g. Uttar Pradesh", key="inv_pos")
+            inv_pos = st.text_input("Place of Supply", value="Varanasi, Uttar Pradesh", placeholder="e.g. Uttar Pradesh", key="inv_pos")
         st.markdown("</div>", unsafe_allow_html=True)
 
         # ── Invoice Details ───────────────────────────────────────────────────
@@ -197,7 +197,7 @@ def render_tab_tax_invoice() -> None:
                 st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # ── Line Items ────────────────────────────────────────────────────────
+        # ── Line Items ───────────────────────────────────────────────────────────
         st.markdown('<div class="section-card"><div class="section-title">📦 Line Items</div>', unsafe_allow_html=True)
         st.markdown(ITEMS_HEADER_INV, unsafe_allow_html=True)
 
@@ -308,9 +308,9 @@ def render_tab_tax_invoice() -> None:
                     if i < len(inv_valid_check):
                         st.markdown("<hr style='margin:8px 0;border-color:#f1f5f9'>", unsafe_allow_html=True)
 
-    # ══════════════════════════════════════════════════════════════════════════
+    # ═══════════════════════════════════════════════════════════════════
     # RIGHT — summary + download
-    # ══════════════════════════════════════════════════════════════════════════
+    # ═══════════════════════════════════════════════════════════════════
     with inv_right:
         inv_valid = [it for it in st.session_state.inv_items if it["desc"].strip()]
         inv_sub   = sum(it["qty"] * it["price"] for it in inv_valid)
