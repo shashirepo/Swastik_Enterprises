@@ -13,11 +13,11 @@ from reportlab.platypus import Image as RLImage
 # ── Number generators ─────────────────────────────────────────────────────────
 
 def gen_order_no() -> str:
-    return "SWSENT" + "".join(random.choices(string.digits, k=3))
+    return "SW" + "".join(random.choices(string.digits, k=3))
 
 
 def gen_invoice_no() -> str:
-    return "SWINV" + "".join(random.choices(string.digits, k=4))
+    return "SWTK" + "".join(random.choices(string.digits, k=4))
 
 
 # ── Amount in words ───────────────────────────────────────────────────────────
