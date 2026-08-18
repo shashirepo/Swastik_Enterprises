@@ -75,7 +75,7 @@ def build_tax_invoice_pdf(
     ]))
     story.append(orig_label)
 
-    # ── Header ────────────────────────────────────────────────────────────────
+    # ── Header ──────────────────────────────────────────────────────────────────
     try:    logo = RLImage(LOGO_PATH, width=33 * mm, height=30 * mm)
     except: logo = Paragraph("", lft_s)
 
@@ -153,9 +153,11 @@ def build_tax_invoice_pdf(
         total_qty      += it["qty"]
         total_cgst_pdf += cgst
         total_sgst_pdf += sgst
+        # Convert newlines to <br/> for multi-line descriptions
+        desc_text = it["desc"].replace("\n", "<br/>")
         rows.append([
             Paragraph(str(i),                   wrap_c),
-            Paragraph(it["desc"],               wrap_s),
+            Paragraph(desc_text,                wrap_s),
             Paragraph(it.get("brand", ""),      wrap_c),
             Paragraph(it["hsn"],                wrap_c),
             Paragraph(f"{it['qty']:.2f}",       wrap_c),
@@ -274,11 +276,11 @@ def build_tax_invoice_pdf(
     ]))
     story += [tt, Spacer(1, 2 * mm)]
 
-    # ── Amount in words ────────────────────────────────────────────────────────
+    # ── Amount in words ───────────────────────────────────────���───────────────────
     story.append(Paragraph(f"<i>{num_to_words(grand_rounded)}</i>", lft_s))
     story.append(Spacer(1, 3 * mm))
 
-    # ── Bank + Terms + Signature footer ───────────────────────────────────────
+    # ── Bank + Terms + Signature footer ───────────────────────────────────────────
     BANK_W     = W * 0.50
     bank_title = Paragraph("<b>Bank Details:</b>", sml_b)
     bank_info  = Paragraph(
